@@ -14,9 +14,9 @@
 <header><span>대한민국 가상자산 시장 · 원화(KRW) 기준</span><button id="refresh">새로고침</button></header>
 <section id="home" class="hero"><label>대한민국 가상자산 시장 비교 플랫폼</label><h1>국내 거래소 가격을 <i>한눈에.</i></h1>
 <p>업비트 · 빗썸 · 코인원의 공개 시세와 거래 정보를 한곳에서 비교하세요.</p>
-<div class="search"><span>⌕</span><input id="search" placeholder="코인 이름 또는 심볼 검색 (예: 비트코인, BTC)"><kbd>/</kbd></div>
+<div class="search"><span>⌕</span><input id="search" type="search" aria-label="코인 이름 또는 심볼 검색" placeholder="코인 이름 또는 심볼 검색 (예: 비트코인, BTC)"><kbd>/</kbd></div>
 <small>국내 거래소가 제공하는 공개 원화 현물 시세를 조회합니다. 거래가 중단되었거나 응답이 없는 시장은 표시하지 않습니다.</small></section>
-<section class="snapshot"><label>주요 코인 시세　<span id="stream-health">실시간 수신 상태 확인 중</span></label><div class="tiles">
+<section class="snapshot"><label>주요 코인 시세　<span id="stream-health" role="status" aria-live="polite">실시간 수신 상태 확인 중</span></label><div class="tiles">
 <article><small>비트코인 · BTC</small><strong>—</strong><p>시세 조회 대기</p></article>
 <article><small>이더리움 · ETH</small><strong>—</strong><p>시세 조회 대기</p></article>
 <article><small>솔라나 · SOL</small><strong>—</strong><p>시세 조회 대기</p></article>
@@ -27,7 +27,7 @@
 <label>가상자산<select id="asset"><option>BTC</option><option>ETH</option><option>SOL</option><option>XRP</option><option>DOGE</option></select></label>
 <label>기준 통화<select id="quote"><option>KRW</option></select></label></div>
 <div class="empty"><b>◇</b><h3 id="message">국내 거래소 시세 조회를 준비하고 있습니다.</h3><p>업비트, 빗썸, 코인원의 공개 호가 데이터를 불러옵니다.</p></div>
-<small>※ 실제 체결 금액은 주문 수량, 호가 잔량, 수수료 및 거래소 정책에 따라 달라질 수 있습니다.</small></div><div class="panel chart-panel"><div class="chart-heading"><div><label>최근 24시간 가격 흐름</label><p>국내 거래소 1시간 봉 종가 비교</p></div><span id="chart-status">차트 조회 대기</span></div><div id="price-chart" role="img" aria-label="국내 거래소 최근 24시간 가격 추이 차트"><p>코인을 선택하면 가격 추이 차트를 표시합니다.</p></div><small>※ 거래소별 공개 캔들 데이터 기준이며, 데이터가 제공되지 않는 거래소는 차트에서 제외됩니다.</small></div></section>
+<small>※ 실제 체결 금액은 주문 수량, 호가 잔량, 수수료 및 거래소 정책에 따라 달라질 수 있습니다.</small></div><div class="panel chart-panel"><div class="chart-heading"><div><label>최근 24시간 가격 흐름</label><p>국내 거래소 1시간 봉 종가 비교</p></div><span id="chart-status" role="status" aria-live="polite">차트 조회 대기</span></div><div id="price-chart" role="img" aria-label="국내 거래소 최근 24시간 가격 추이 차트"><p>코인을 선택하면 가격 추이 차트를 표시합니다.</p></div><small>※ 거래소별 공개 캔들 데이터 기준이며, 데이터가 제공되지 않는 거래소는 차트에서 제외됩니다.</small></div></section>
 <section id="rank"><label>국내 거래소 기준</label><h2>거래소 거래량 순위</h2><div class="panel">
 <div class="ranking-controls"><span>24시간 원화 현물 거래량</span><small>거래소 공개 데이터 기준</small></div>
 <div id="ranking-panel"><p>국내 거래소별 거래량 데이터를 조회할 수 있습니다.</p></div></div></section>
