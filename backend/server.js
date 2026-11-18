@@ -14,6 +14,36 @@ const EXCHANGE_INFO = {
   coinone: { name: "코인원" }
 };
 const instances = new Map();
+const responseCache = new Map();
+
+function cacheJson(ttlMs) {
+  return (req, res, next) => {
+    const key = req.originalUrl;
+    const cached = responseCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      res.set("X-BB-Cache", "HIT");
+      return res.json(cached.body);
+    }
+
+    const originalJson = res.json.bind(res);
+    res.json = body => {
+      if (res.statusCode < 400) {
+        responseCache.set(key, { body, expiresAt: Date.now() + ttlMs });
+        if (responseCache.size > 300) {
+          const now = Date.now();
+          for (const [cacheKey, entry] of responseCache) {
+            if (entry.expiresAt <= now || responseCache.size > 250) {
+              responseCache.delete(cacheKey);
+            }
+          }
+        }
+      }
+      res.set("X-BB-Cache", "MISS");
+      return originalJson(body);
+    };
+    next();
+  };
+}
 
 function getExchange(id) {
   if (!ccxt[id]) throw new Error("지원하지 않는 거래소입니다.");
@@ -36,7 +66,7 @@ app.get("/api/exchanges", (_req, res) => {
   res.json({ exchanges: EXCHANGE_IDS.map(id => ({ id, name: EXCHANGE_INFO[id].name })) });
 });
 
-app.get("/api/compare", async (req, res) => {
+app.get("/api/compare", cacheJson(8000), async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
@@ -90,7 +120,7 @@ app.get("/api/compare", async (req, res) => {
   });
 });
 
-app.get("/api/history", async (req, res) => {
+app.get("/api/history", cacheJson(60000), async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
@@ -128,7 +158,7 @@ app.get("/api/history", async (req, res) => {
   });
 });
 
-app.get("/api/rankings", async (req, res) => {
+app.get("/api/rankings", cacheJson(60000), async (req, res) => {
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (quote !== "KRW") {
     return res.status(400).json({ error: "국내 거래소 순위는 KRW 기준만 지원합니다." });
