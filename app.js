@@ -184,7 +184,7 @@ const note=document.createElement("p");note.className="data-note";note.textConte
 }catch(error){rankingPanel.innerHTML="";const p=document.createElement("p");p.textContent="거래량 순위를 불러오지 못했습니다: "+error.message;rankingPanel.append(p);}}
 document.querySelector('a[href="#rank"]')?.addEventListener("click",loadRankings);
 asset.addEventListener("change",()=>{load();loadHistory();connectMarketSocket();});quote.addEventListener("change",()=>{load();loadHistory();});refresh.addEventListener("click",()=>{load();loadSnapshot();loadHistory();loadRankings(true);});
-search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();const aliases={"비트코인":"BTC","이더리움":"ETH","솔라나":"SOL","리플":"XRP","엑스알피":"XRP","도지코인":"DOGE"};const symbol=aliases[v]||v;if(["BTC","ETH","SOL","XRP","DOGE"].includes(symbol)){asset.value=symbol;load();loadHistory();connectMarketSocket();}});
+search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();const aliases={"비트코인":"BTC","BITCOIN":"BTC","이더리움":"ETH","ETHEREUM":"ETH","솔라나":"SOL","SOLANA":"SOL","리플":"XRP","엑스알피":"XRP","RIPPLE":"XRP","도지코인":"DOGE","DOGECOIN":"DOGE"};const symbol=aliases[v]||v;if(["BTC","ETH","SOL","XRP","DOGE"].includes(symbol)){asset.value=symbol;load();loadHistory();connectMarketSocket();}});
 document.addEventListener("keydown",e=>{if(e.key==="/"&&!(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))){e.preventDefault();search.focus();}});
 load();
 loadSnapshot();
