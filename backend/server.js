@@ -45,8 +45,8 @@ app.get("/api/compare", async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
 
-  if (!/^[A-Z0-9]{2,15}$/.test(asset) || !/^[A-Z0-9]{2,15}$/.test(quote)) {
-    return res.status(400).json({ error: "Invalid asset or quote symbol." });
+  if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
+    return res.status(400).json({ error: "국내 거래소 비교는 올바른 가상자산 심볼과 KRW 기준만 지원합니다." });
   }
 
   const symbol = `${asset}/${quote}`;
@@ -55,7 +55,7 @@ app.get("/api/compare", async (req, res) => {
       const exchange = getExchange(id);
       await exchange.loadMarkets();
       if (!exchange.markets[symbol]) {
-        return { exchange: id, symbol, available: false, reason: "Market pair not listed" };
+        return { exchange: id, symbol, available: false, reason: "해당 원화 거래 시장이 없습니다." };
       }
       const book = await exchange.fetchOrderBook(symbol, 20);
       const bestAsk = book.asks?.[0];
@@ -75,7 +75,7 @@ app.get("/api/compare", async (req, res) => {
         feeAdjustedAsk,
         feeEstimateAvailable: feeAdjustedAsk !== null,
         timestamp: book.timestamp || Date.now(),
-        source: "exchange order book + public market metadata",
+        source: "국내 거래소 공개 호가 및 시장 정보",
         feeIncluded: false
       };
     } catch (error) {
@@ -83,7 +83,7 @@ app.get("/api/compare", async (req, res) => {
         exchange: id,
         symbol,
         available: false,
-        reason: String(error.message || "Market data unavailable").slice(0, 180)
+        reason: String(error.message || "시세 데이터를 불러올 수 없습니다.").slice(0, 180)
       };
     }
   }));
@@ -100,7 +100,7 @@ app.get("/api/compare", async (req, res) => {
     quote,
     symbol,
     updatedAt: new Date().toISOString(),
-    methodology: "Sorted by estimated ask price including public market taker fee when available. Fees may differ by account tier, promotions and jurisdiction. Slippage, fiat conversion, transfer costs and regional restrictions are not included.",
+    methodology: "공개 매수 수수료를 확인할 수 있는 경우 이를 반영한 예상가 기준으로 정렬합니다. 실제 수수료는 회원 등급과 이벤트에 따라 다를 수 있으며, 슬리피지와 입출금 비용은 포함하지 않습니다.",
     results: available,
     unavailable: results.filter((item) => !item.available)
   });
@@ -133,7 +133,7 @@ app.get("/api/rankings", async (req, res) => {
       return {
         exchange: id, name: info.name, quote,
         quoteVolume24h: quoteVolume24h || null, marketsCount,
-        available: quoteVolume24h > 0, source: "public exchange tickers",
+        available: quoteVolume24h > 0, source: "국내 거래소 공개 시세",
         updatedAt: new Date().toISOString()
       };
     } catch (error) {
@@ -141,7 +141,7 @@ app.get("/api/rankings", async (req, res) => {
       return {
         exchange: id, name: info.name, quote, quoteVolume24h: null,
         marketsCount: 0, available: false,
-        reason: String(error.message || "Volume data unavailable").slice(0, 160)
+        reason: String(error.message || "거래량 데이터를 불러올 수 없습니다.").slice(0, 160)
       };
     }
   }));
@@ -160,7 +160,7 @@ app.get("/api/rankings", async (req, res) => {
 app.get("/api/dex", async (req, res) => {
   const asset = String(req.query.asset || "BTC").trim().toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset)) {
-    return res.status(400).json({ error: "Invalid asset symbol." });
+    return res.status(400).json({ error: "올바른 가상자산 심볼을 입력해 주세요." });
   }
 
   try {
