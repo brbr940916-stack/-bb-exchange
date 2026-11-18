@@ -43,6 +43,7 @@ const EXCHANGE_INFO = {
 };
 const instances = new Map();
 const responseCache = new Map();
+const inFlightResponses = new Map();
 
 function asyncHandler(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
@@ -57,7 +58,31 @@ function cacheJson(ttlMs) {
       return res.json(cached.body);
     }
 
+    // 같은 URL의 동시 요청은 첫 요청의 결과를 공유해 거래소 API 중복 호출을 줄입니다.
+    const pending = inFlightResponses.get(key);
+    if (pending) {
+      res.set("X-BB-Cache", "COALESCED");
+      pending.then(({ status, body }) => {
+        if (!res.headersSent) res.status(status).json(body);
+      }).catch(next);
+      return;
+    }
+
+    let resolvePending;
+    const pendingResponse = new Promise(resolve => { resolvePending = resolve; });
+    inFlightResponses.set(key, pendingResponse);
     const originalJson = res.json.bind(res);
+    let settled = false;
+    const settlePending = body => {
+      if (settled) return;
+      settled = true;
+      resolvePending({ status: res.statusCode, body });
+      if (inFlightResponses.get(key) === pendingResponse) inFlightResponses.delete(key);
+    };
+
+    res.once("finish", () => {
+      if (!settled) settlePending({ error: "요청을 완료하지 못했습니다." });
+    });
     res.json = body => {
       if (res.statusCode < 400) {
         responseCache.set(key, { body, expiresAt: Date.now() + ttlMs });
@@ -70,6 +95,7 @@ function cacheJson(ttlMs) {
           }
         }
       }
+      settlePending(body);
       res.set("X-BB-Cache", "MISS");
       return originalJson(body);
     };
