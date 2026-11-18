@@ -309,11 +309,19 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
       streamStatus[exchangeId].state = "connected";
       streamStatus[exchangeId].connectedAt = new Date().toISOString();
       streamStatus[exchangeId].lastError = null;
-      try { subscribe(socket); } catch (_error) {}
+      try {
+        subscribe(socket);
+      } catch (error) {
+        streamStatus[exchangeId].lastError = ("구독 요청 실패: " + (error.message || error)).slice(0, 180);
+      }
       heartbeat = setInterval(() => {
-        if (socket.readyState === WebSocket.OPEN) {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        try {
           if (exchangeId === "coinone") socket.send(JSON.stringify({ request_type: "PING" }));
           else socket.ping();
+        } catch (error) {
+          streamStatus[exchangeId].lastError = ("연결 확인 실패: " + (error.message || error)).slice(0, 180);
+          socket.terminate();
         }
       }, 30000);
       console.log(exchangeId + " public WebSocket connected");
@@ -325,7 +333,9 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
         const parsed = JSON.parse(text);
         streamStatus[exchangeId].lastMessageAt = new Date().toISOString();
         for (const item of Array.isArray(parsed) ? parsed : [parsed]) handler(item);
-      } catch (_error) {}
+      } catch (error) {
+        streamStatus[exchangeId].lastError = ("메시지 처리 실패: " + (error.message || error)).slice(0, 180);
+      }
     });
     socket.on("close", () => {
       streamStatus[exchangeId].state = "reconnecting";
