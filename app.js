@@ -1,16 +1,56 @@
 const API_BASE="https://bb-exchange-api.onrender.com";
 const search=document.querySelector("#search"),asset=document.querySelector("#asset"),quote=document.querySelector("#quote"),refresh=document.querySelector("#refresh"),empty=document.querySelector(".empty"),sideNote=document.querySelector(".side-note"),statusLabel=document.querySelector(".snapshot > label span");
 let requestNumber=0;
+let currentCompareData=null;
+let marketSocket=null;
+let marketSocketGeneration=0;
 function money(v,currency="KRW"){if(!Number.isFinite(Number(v)))return"—";return new Intl.NumberFormat("ko-KR",{style:"currency",currency,maximumFractionDigits:currency==="KRW"?0:6}).format(Number(v));}
 function status(t){if(sideNote)sideNote.textContent="● "+t;if(statusLabel)statusLabel.textContent=t;}
 function msg(title,detail){empty.innerHTML="";const h=document.createElement("h3");h.textContent=title;const p=document.createElement("p");p.textContent=detail;empty.append(h,p);}
 function table(headers,rows){const t=document.createElement("table");t.className="market-table";const hd=document.createElement("thead"),hr=document.createElement("tr");headers.forEach(x=>{const th=document.createElement("th");th.textContent=x;hr.append(th);});hd.append(hr);const bd=document.createElement("tbody");rows.forEach(x=>bd.append(x));t.append(hd,bd);return t;}
 function cell(tr,value,cls){const td=document.createElement("td");td.textContent=value??"—";if(cls)td.className=cls;tr.append(td);}
-function renderCex(d){empty.innerHTML="";const s=document.createElement("div");s.className="results-summary";s.textContent=d.symbol+" · "+d.results.length+"개 거래소 응답 · "+new Date(d.updatedAt).toLocaleString("ko-KR");empty.append(s);
+function renderCex(d){currentCompareData=d;empty.innerHTML="";const s=document.createElement("div");s.className="results-summary";s.textContent=d.symbol+" · "+d.results.length+"개 거래소 응답 · "+new Date(d.updatedAt).toLocaleString("ko-KR");empty.append(s);
 if(!d.results.length){const p=document.createElement("p");p.textContent="현재 조회 가능한 국내 거래소가 없습니다.";empty.append(p);}
 const rows=d.results.map(x=>{const tr=document.createElement("tr");cell(tr,x.exchangeName||x.exchange);cell(tr,x.bestAsk?money(x.bestAsk.price):"—","price-cell");cell(tr,x.takerFeeRate!==null&&x.takerFeeRate!==undefined?(x.takerFeeRate*100).toFixed(3)+"%":"확인 불가");cell(tr,x.feeAdjustedAsk!==null&&x.feeAdjustedAsk!==undefined?money(x.feeAdjustedAsk):"수수료 확인 불가");cell(tr,x.bestBid?money(x.bestBid.price):"—");return tr;});
 if(rows.length)empty.append(table(["거래소","매도 1호가","공개 체결 수수료","수수료 반영 예상가","매수 1호가"],rows));
 const n=document.createElement("p");n.className="data-note";n.textContent=d.methodology||"※ 공개된 기본 체결 수수료를 반영한 참고 예상가입니다. 회원 등급별 할인, 주문 수량에 따른 호가 변동 및 입출금 비용은 반영되지 않습니다.";empty.append(n);if(d.unavailable?.length){const u=document.createElement("p");u.className="data-note";u.textContent="조회 불가: "+d.unavailable.map(x=>(x.exchangeName||x.exchange)+" ("+(x.reason||"응답 없음")+")").join(" · ");empty.append(u);}}
+function applyLiveBook(update){
+ if(!currentCompareData||currentCompareData.asset!==update.asset)return;
+ const results=[...(currentCompareData.results||[])];
+ const item={
+  exchange:update.exchange,exchangeName:update.exchangeName,available:true,
+  bestAsk:update.bestAsk,bestBid:update.bestBid,
+  timestamp:update.timestamp
+ };
+ const index=results.findIndex(x=>x.exchange===update.exchange);
+ if(index>=0)results[index]={...results[index],...item};
+ else results.push(item);
+ results.sort((a,b)=>{
+  if(a.feeAdjustedAsk!=null&&b.feeAdjustedAsk!=null)return a.feeAdjustedAsk-b.feeAdjustedAsk;
+  if(a.feeAdjustedAsk!=null)return -1;
+  if(b.feeAdjustedAsk!=null)return 1;
+  return (a.bestAsk?.price||Infinity)-(b.bestAsk?.price||Infinity);
+ });
+ renderCex({...currentCompareData,results,updatedAt:new Date(update.timestamp).toISOString()});
+ status("실시간 호가 수신 · "+results.length+"개 거래소");
+}
+function connectMarketSocket(){
+ const generation=++marketSocketGeneration;
+ if(marketSocket){marketSocket.onclose=null;marketSocket.close();}
+ const endpoint=API_BASE.replace(/^http/,"ws")+"/ws/market?asset="+encodeURIComponent(asset.value);
+ try{marketSocket=new WebSocket(endpoint);}catch(_error){return;}
+ marketSocket.onopen=()=>{if(generation===marketSocketGeneration)status("실시간 호가 연결됨");};
+ marketSocket.onmessage=event=>{
+  if(generation!==marketSocketGeneration)return;
+  try{applyLiveBook(JSON.parse(event.data));}catch(_error){}
+ };
+ marketSocket.onclose=()=>{
+  if(generation!==marketSocketGeneration)return;
+  status("실시간 호가 재연결 중");
+  setTimeout(()=>{if(generation===marketSocketGeneration)connectMarketSocket();},3000);
+ };
+ marketSocket.onerror=()=>{if(generation===marketSocketGeneration)status("실시간 연결 대기 · 자동 조회 사용");};
+}
 async function load(silent=false){const id=++requestNumber,symbol=asset.value,q=quote.value;if(!silent){status("국내 거래소 시세 조회 중");refresh.disabled=true;refresh.textContent="조회 중…";msg("국내 거래소 시세를 조회하고 있습니다.","업비트, 빗썸, 코인원 공개 데이터에 연결하는 중입니다.");}
 try{const response=await fetch(API_BASE+"/api/compare?asset="+encodeURIComponent(symbol)+"&quote="+encodeURIComponent(q));if(!response.ok)throw new Error("시세 조회 요청에 실패했습니다. (오류 "+response.status+")");const data=await response.json();if(id!==requestNumber)return;renderCex(data);status(data.results?.length?"국내 거래소 "+data.results.length+"곳 시세 수신":"거래 가능한 국내 시세 없음");
 const btc=document.querySelector(".tiles article:first-child strong");if(symbol==="BTC"&&data.results?.[0]?.bestAsk&&btc)btc.textContent=money(data.results[0].bestAsk.price);
@@ -97,8 +137,8 @@ const rows=data.results.map(x=>{const tr=document.createElement("tr");cell(tr,St
 const note=document.createElement("p");note.className="data-note";note.textContent=data.rankingBasis;rankingPanel.append(note);rankingsLoaded=true;
 }catch(error){rankingPanel.innerHTML="";const p=document.createElement("p");p.textContent="거래량 순위를 불러오지 못했습니다: "+error.message;rankingPanel.append(p);}}
 document.querySelector('a[href="#rank"]')?.addEventListener("click",loadRankings);
-asset.addEventListener("change",()=>{load();loadHistory();});quote.addEventListener("change",()=>{load();loadHistory();});refresh.addEventListener("click",()=>{load();loadSnapshot();loadHistory();loadRankings(true);});
-search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();const aliases={"비트코인":"BTC","이더리움":"ETH","솔라나":"SOL","리플":"XRP","엑스알피":"XRP","도지코인":"DOGE"};const symbol=aliases[v]||v;if(["BTC","ETH","SOL","XRP","DOGE"].includes(symbol)){asset.value=symbol;load();loadHistory();}});
+asset.addEventListener("change",()=>{load();loadHistory();connectMarketSocket();});quote.addEventListener("change",()=>{load();loadHistory();});refresh.addEventListener("click",()=>{load();loadSnapshot();loadHistory();loadRankings(true);});
+search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();const aliases={"비트코인":"BTC","이더리움":"ETH","솔라나":"SOL","리플":"XRP","엑스알피":"XRP","도지코인":"DOGE"};const symbol=aliases[v]||v;if(["BTC","ETH","SOL","XRP","DOGE"].includes(symbol)){asset.value=symbol;load();loadHistory();connectMarketSocket();}});
 document.addEventListener("keydown",e=>{if(e.key==="/"&&!(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))){e.preventDefault();search.focus();}});
 load();
 loadSnapshot();
@@ -106,6 +146,7 @@ loadHistory();
 loadRankings();
 
 // 화면은 1초마다 서버 캐시를 확인하고, 거래소 원본 API 호출은 서버 캐시 주기로 제한합니다.
+let lastCompareRefresh = 0;
 let lastSnapshotRefresh = 0;
 let lastChartRefresh = 0;
 let lastRankingRefresh = 0;
@@ -115,8 +156,8 @@ async function liveRefreshLoop(){
  refreshLoopRunning=true;
  while(document.visibilityState==="visible"){
   const now=Date.now();
-  await load(true);
-  if(now-lastSnapshotRefresh>=5000){await loadSnapshot();lastSnapshotRefresh=Date.now();}
+  if(now-lastCompareRefresh>=15000){await load(true);lastCompareRefresh=Date.now();}
+  if(now-lastSnapshotRefresh>=10000){await loadSnapshot();lastSnapshotRefresh=Date.now();}
   if(now-lastChartRefresh>=10000){await loadHistory();lastChartRefresh=Date.now();}
   if(now-lastRankingRefresh>=60000){await loadRankings(true);lastRankingRefresh=Date.now();}
   await new Promise(resolve=>setTimeout(resolve,1000));
@@ -125,5 +166,6 @@ async function liveRefreshLoop(){
 }
 document.addEventListener("visibilitychange",()=>{
  if(document.visibilityState==="visible")liveRefreshLoop();
+connectMarketSocket();
 });
 liveRefreshLoop();
