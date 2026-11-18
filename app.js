@@ -104,3 +104,22 @@ load();
 loadSnapshot();
 loadHistory();
 loadRankings();
+
+// 화면이 열려 있을 때만 자동 갱신해 불필요한 API 호출을 줄입니다.
+let lastSlowRefresh = Date.now();
+setInterval(() => {
+ if (document.visibilityState !== "visible") return;
+ load();
+ loadSnapshot();
+ if (Date.now() - lastSlowRefresh >= 60000) {
+  loadHistory();
+  loadRankings(true);
+  lastSlowRefresh = Date.now();
+ }
+}, 30000);
+document.addEventListener("visibilitychange", () => {
+ if (document.visibilityState === "visible") {
+  load();
+  loadSnapshot();
+ }
+});
