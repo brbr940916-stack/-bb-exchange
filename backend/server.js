@@ -90,6 +90,44 @@ app.get("/api/compare", async (req, res) => {
   });
 });
 
+app.get("/api/history", async (req, res) => {
+  const asset = String(req.query.asset || "BTC").toUpperCase();
+  const quote = String(req.query.quote || "KRW").toUpperCase();
+  if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
+    return res.status(400).json({ error: "가격 차트는 올바른 가상자산 심볼과 KRW 기준만 지원합니다." });
+  }
+  const symbol = `${asset}/KRW`;
+  const results = await Promise.all(EXCHANGE_IDS.map(async id => {
+    try {
+      const exchange = getExchange(id);
+      await exchange.loadMarkets();
+      if (!exchange.markets[symbol]) {
+        return { exchange: id, name: EXCHANGE_INFO[id].name, available: false, reason: "해당 원화 거래 시장이 없습니다." };
+      }
+      const candles = await exchange.fetchOHLCV(symbol, "1h", undefined, 24);
+      return {
+        exchange: id,
+        name: EXCHANGE_INFO[id].name,
+        available: Array.isArray(candles) && candles.length > 0,
+        candles: (candles || []).map(([timestamp, open, high, low, close, volume]) => ({
+          timestamp, open, high, low, close, volume
+        }))
+      };
+    } catch (error) {
+      return {
+        exchange: id, name: EXCHANGE_INFO[id].name, available: false,
+        reason: String(error.message || "가격 이력을 불러올 수 없습니다.").slice(0, 160)
+      };
+    }
+  }));
+  res.json({
+    asset, quote, interval: "1h", updatedAt: new Date().toISOString(),
+    methodology: "각 국내 거래소가 제공하는 최근 1시간 봉 최대 24개의 종가입니다. 거래소별 데이터 제공 범위와 갱신 시각이 다를 수 있습니다.",
+    results: results.filter(item => item.available),
+    unavailable: results.filter(item => !item.available)
+  });
+});
+
 app.get("/api/rankings", async (req, res) => {
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (quote !== "KRW") {
