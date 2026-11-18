@@ -56,11 +56,28 @@ function getExchange(id) {
 }
 
 app.get("/api/health", (_req, res) => {
+  const now = Date.now();
+  const websocket = Object.fromEntries(EXCHANGE_IDS.map(id => {
+    const stream = streamStatus[id];
+    const lastUpdateMs = stream.lastUpdateAt ? Date.parse(stream.lastUpdateAt) : NaN;
+    const ageMs = Number.isFinite(lastUpdateMs) ? Math.max(0, now - lastUpdateMs) : null;
+    return [id, {
+      ...stream,
+      lastUpdateAgeMs: ageMs,
+      hasFreshData: ageMs !== null && ageMs < 30000
+    }];
+  }));
+  const freshStreams = Object.values(websocket).filter(stream => stream.hasFreshData).length;
   res.json({
     status: "ok",
     service: "BB 거래소 API",
     marketData: "국내 거래소 공개 원화 현물 시세",
-    websocket: streamStatus,
+    marketDataState: freshStreams === EXCHANGE_IDS.length ? "live" : freshStreams > 0 ? "partial" : "waiting",
+    freshExchangeCount: freshStreams,
+    serverTime: new Date(now).toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    browserWebSocketClients: browserClients.size,
+    websocket,
     liveMarkets: LIVE_ASSETS,
     exchanges: EXCHANGE_IDS.map(id => ({ id, name: EXCHANGE_INFO[id].name }))
   });
@@ -225,11 +242,11 @@ const browserWss = new WebSocket.Server({ noServer: true });
 function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
   const validAsks = (asks || []).map(level => ({
     price: Number(level.price), amount: Number(level.amount)
-  })).filter(level => Number.isFinite(level.price) && level.price > 0)
+  })).filter(level => Number.isFinite(level.price) && level.price > 0 && Number.isFinite(level.amount) && level.amount > 0)
     .sort((a, b) => a.price - b.price);
   const validBids = (bids || []).map(level => ({
     price: Number(level.price), amount: Number(level.amount)
-  })).filter(level => Number.isFinite(level.price) && level.price > 0)
+  })).filter(level => Number.isFinite(level.price) && level.price > 0 && Number.isFinite(level.amount) && level.amount > 0)
     .sort((a, b) => b.price - a.price);
   if (!validAsks.length) return;
   const update = {
