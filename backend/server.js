@@ -21,8 +21,17 @@ app.use((req, res, next) => {
   next();
 });
 app.use(cors({
-  origin: (origin, callback) => callback(null, !origin || allowedBrowserOrigins.has(origin))
+  origin: (origin, callback) => callback(null, !origin || allowedBrowserOrigins.has(origin)),
+  methods: ["GET", "HEAD"],
+  allowedHeaders: ["Content-Type"],
+  maxAge: 600
 }));
+app.use((req, res, next) => {
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    return res.status(405).json({ error: "지원하지 않는 요청 방식입니다." });
+  }
+  next();
+});
 app.use(express.json({ limit: "16kb" }));
 
 const PORT = process.env.PORT || 10000;
