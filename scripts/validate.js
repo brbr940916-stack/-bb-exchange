@@ -11,6 +11,8 @@ assert.match(html, /<html lang="ko">/, "페이지는 한국어로 제공되어�
 assert.match(html, /id="asset"/, "자산 선택기가 있어야 합니다.");
 assert.match(html, /<option>KRW<\/option>/, "기준 통화는 KRW여야 합니다.");
 assert.match(html, /id="stream-health"/, "실시간 수신 상태 영역이 있어야 합니다.");
+assert.match(html, /aria-live="polite"/, "실시간 상태 안내는 보조기기에 전달되어야 합니다.");
+assert.match(html, /aria-label="코인 이름 또는 심볼 검색"/, "검색 입력에 접근 가능한 이름이 있어야 합니다.");
 for (const exchange of ["upbit", "bithumb", "coinone"]) {
   assert.ok(backend.includes(exchange), exchange + " 연동 코드가 있어야 합니다.");
 }
