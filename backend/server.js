@@ -354,6 +354,11 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
         if (text === "PING" || text === "PONG") return;
         const parsed = JSON.parse(text);
         for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
+          if (item.error && typeof item.error === "object") {
+            const detail = item.error.message || item.error.name || "거래소가 요청을 거부했습니다.";
+            streamStatus[exchangeId].lastError = (EXCHANGE_INFO[exchangeId].name + " 스트림 오류: " + detail).slice(0, 180);
+            continue;
+          }
           if (exchangeId === "coinone" && (item.response_type === "ERROR" || item.r === "ERROR")) {
             streamStatus[exchangeId].lastError = ("코인원 구독/스트림 오류: " + (item.message || item.error_code || "알 수 없는 오류")).slice(0, 180);
             continue;
