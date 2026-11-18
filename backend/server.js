@@ -141,7 +141,7 @@ app.get("/api/compare", cacheJson(5000), async (req, res) => {
   });
 });
 
-app.get("/api/history", cacheJson(10000), async (req, res) => {
+app.get("/api/history", cacheJson(60000), async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
@@ -179,7 +179,7 @@ app.get("/api/history", cacheJson(10000), async (req, res) => {
   });
 });
 
-app.get("/api/rankings", cacheJson(60000), async (req, res) => {
+app.get("/api/rankings", cacheJson(300000), async (req, res) => {
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (quote !== "KRW") {
     return res.status(400).json({ error: "국내 거래소 순위는 KRW 기준만 지원합니다." });
