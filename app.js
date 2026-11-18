@@ -16,6 +16,24 @@ try{const response=await fetch(API_BASE+"/api/compare?asset="+encodeURIComponent
 const btc=document.querySelector(".tiles article:first-child strong");if(symbol==="BTC"&&data.results?.[0]?.bestAsk&&btc)btc.textContent=money(data.results[0].bestAsk.price);
 }catch(e){if(id!==requestNumber)return;msg("시세 데이터를 불러오지 못했습니다.",e.message+" 잠시 후 다시 시도해 주세요.");status("데이터 연결 오류");}
 finally{if(id===requestNumber){refresh.disabled=false;refresh.textContent="새로고침";}}}
+
+async function loadSnapshot(){
+ const assets=["BTC","ETH","SOL"];
+ const cards=document.querySelectorAll(".tiles article");
+ await Promise.all(assets.map(async(symbol,index)=>{
+  try{
+   const response=await fetch(API_BASE+"/api/compare?asset="+symbol+"&quote=KRW");
+   if(!response.ok)throw new Error("조회 실패");
+   const data=await response.json();
+   const best=data.results?.filter(x=>x.bestAsk?.price).sort((a,b)=>a.bestAsk.price-b.bestAsk.price)[0];
+   if(best&&cards[index]){
+    cards[index].querySelector("strong").textContent=money(best.bestAsk.price);
+    cards[index].querySelector("p").textContent="최저 매도 1호가 · "+(best.exchangeName||best.exchange);
+   }else if(cards[index])cards[index].querySelector("p").textContent="현재 거래 가능한 원화 시장 없음";
+  }catch(_error){if(cards[index])cards[index].querySelector("p").textContent="시세 조회 대기";}
+ }));
+}
+
 const rankingPanel=document.querySelector("#ranking-panel");let rankingsLoaded=false;
 async function loadRankings(){if(!rankingPanel||rankingsLoaded)return;rankingPanel.innerHTML="<p>국내 거래소의 24시간 원화 현물 거래량을 조회하고 있습니다.</p>";
 try{const response=await fetch(API_BASE+"/api/rankings?quote=KRW");if(!response.ok)throw new Error("순위 조회 요청에 실패했습니다. (오류 "+response.status+")");const data=await response.json();const summary=document.createElement("div");summary.className="results-summary";summary.textContent="원화 현물 시장 · "+new Date(data.updatedAt).toLocaleString("ko-KR");
@@ -23,7 +41,7 @@ const rows=data.results.map(x=>{const tr=document.createElement("tr");cell(tr,St
 const note=document.createElement("p");note.className="data-note";note.textContent=data.rankingBasis;rankingPanel.append(note);rankingsLoaded=true;
 }catch(error){rankingPanel.innerHTML="";const p=document.createElement("p");p.textContent="거래량 순위를 불러오지 못했습니다: "+error.message;rankingPanel.append(p);}}
 document.querySelector('a[href="#rank"]')?.addEventListener("click",loadRankings);
-asset.addEventListener("change",load);quote.addEventListener("change",load);refresh.addEventListener("click",load);
+asset.addEventListener("change",load);quote.addEventListener("change",load);refresh.addEventListener("click",()=>{load();loadSnapshot();});
 search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();const aliases={"비트코인":"BTC","이더리움":"ETH","솔라나":"SOL","리플":"XRP","엑스알피":"XRP","도지코인":"DOGE"};const symbol=aliases[v]||v;if(["BTC","ETH","SOL","XRP","DOGE"].includes(symbol)){asset.value=symbol;load();}});
 document.addEventListener("keydown",e=>{if(e.key==="/"&&!(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))){e.preventDefault();search.focus();}});
 load();
