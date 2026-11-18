@@ -1,25 +1,38 @@
-# BB Exchange
-글로벌 가상자산 거래소 가격 비교 웹사이트 스타터.
+# BB Exchange API (starter)
 
-## 포함 기능
-- 블랙 + 은은한 골드 반응형 디자인
-- 코인 검색 입력, 자산 및 CEX/DEX 필터 UI
-- 가격 비교, 국가별 거래소 순위, DEX 섹션
-- 실제 API 연결 전까지 가격은 `—`로 표시 (가짜 시세 없음)
+This is a separate Node.js API service for the existing BB Exchange static website.
 
-## 아직 구현해야 할 것
-- CEX 실시간 호가/거래 수수료 API
-- DEX 풀 가격/유동성/거래량/슬리피지 API
-- 국가별 거래소 접근 가능 여부 및 순위 검증
-- 서버 API, 계정, 관심목록
+## What it does
+- `/api/health` - health check
+- `/api/exchanges` - configured CEX list
+- `/api/compare?asset=BTC&quote=USDT` - fetches public order books from supported exchanges and sorts available markets by best ask
 
-## 미리보기
-`index.html`을 브라우저에서 엽니다.
+## Important limitations
+- Public market data only. No API keys or trading permissions are used.
+- Results are sorted by the top ask price only.
+- Trading fees, slippage for a target order size, fiat conversion, deposit/withdrawal fees, transfer time and regional access restrictions are not yet included.
+- A market can be unavailable on an exchange because the pair is not listed, the exchange blocks the server region, or its API is temporarily unavailable.
+- DEX integration and country rankings are separate future tasks. Do not treat DEX pools as centralized order books.
 
-## GitHub 업로드
-저장소에서 Add file → Upload files를 누르고 이 폴더의 파일 4개를 업로드한 뒤 Commit changes를 누릅니다.
+## Deploy on Render
+Create a **new Web Service** (keep the existing Static Site for the website).
+- Repository: `brbr940916-stack/-bb-exchange`
+- Branch: `main`
+- Root Directory: `backend`
+- Runtime: Node
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Health Check Path: `/api/health`
+- Instance: Free for initial testing
 
-## Render 배포
-New + → Static Site → GitHub 저장소 연결. Build Command는 비워 두고 Publish Directory는 `.`로 설정한 뒤 Deploy합니다.
+The `backend` folder must be uploaded to the root of the GitHub repository so that `backend/package.json` and `backend/server.js` exist.
 
-주의: 현재 파일은 프런트엔드 스타터이며 실시간 거래소 가격은 아직 제공하지 않습니다.
+After deployment, test:
+`https://YOUR-BACKEND.onrender.com/api/health`
+`https://YOUR-BACKEND.onrender.com/api/compare?asset=BTC&quote=USDT`
+
+## Frontend connection
+Once the Web Service URL is known, the website's `app.js` can call:
+`https://YOUR-BACKEND.onrender.com/api/compare?asset=BTC&quote=USDT`
+
+Keep the backend URL in one configuration constant in the frontend. Do not expose private API keys in browser code.
