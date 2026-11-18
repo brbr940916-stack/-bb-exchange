@@ -50,3 +50,7 @@ button:hover{background:rgba(213,181,106,.10);border-color:#c9a65e;transform:tra
 .chart-legend i{display:inline-block;width:17px;height:3px;border-radius:3px}
 .chart-panel>small{display:block;margin-top:12px;line-height:1.6}
 @media(max-width:520px){.chart-heading{align-items:flex-start;flex-direction:column}.history-svg{min-height:140px}.chart-legend{gap:12px}}
+
+/* 거래소별 실시간 수신 상태 */
+#stream-health{display:inline-block;max-width:100%;line-height:1.7;letter-spacing:.4px;white-space:normal}
+.snapshot>label{display:block;line-height:1.8}
