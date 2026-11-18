@@ -15,7 +15,7 @@ async function load(silent=false){const id=++requestNumber,symbol=asset.value,q=
 try{const response=await fetch(API_BASE+"/api/compare?asset="+encodeURIComponent(symbol)+"&quote="+encodeURIComponent(q));if(!response.ok)throw new Error("시세 조회 요청에 실패했습니다. (오류 "+response.status+")");const data=await response.json();if(id!==requestNumber)return;renderCex(data);status(data.results?.length?"국내 거래소 "+data.results.length+"곳 시세 수신":"거래 가능한 국내 시세 없음");
 const btc=document.querySelector(".tiles article:first-child strong");if(symbol==="BTC"&&data.results?.[0]?.bestAsk&&btc)btc.textContent=money(data.results[0].bestAsk.price);
 }catch(e){if(id!==requestNumber)return;msg("시세 데이터를 불러오지 못했습니다.",e.message+" 잠시 후 다시 시도해 주세요.");status("데이터 연결 오류");}
-finally{if(id===requestNumber){refresh.disabled=false;refresh.textContent="새로고침";}}}
+finally{if(id===requestNumber&&!silent){refresh.disabled=false;refresh.textContent="새로고침";}}}
 
 async function loadSnapshot(){
  const assets=["BTC","ETH","SOL"];
