@@ -37,6 +37,9 @@ assert.match(backend, /express\.json\(\{ limit: "16kb" \}\)/, "JSON 요청 본�
 assert.match(backend, /const inFlightResponses = new Map\(\)/, "동일한 동시 요청의 거래소 호출을 합쳐야 합니다.");
 assert.match(backend, /X-BB-Cache", "COALESCED"/, "동시 요청 병합 여부를 응답 헤더로 구분해야 합니다.");
 assert.match(backend, /pending\.then\(\(\{ status, body \}\)/, "동시 요청은 첫 요청의 응답을 안전하게 공유해야 합니다.");
+assert.match(backend, /inFlightResponses\.size >= 100/, "동시 신규 API 작업 수에 상한을 둬야 합니다.");
+assert.match(backend, /res\.once\("close", cleanupPending\)/, "클라이언트 연결 종료 시 대기 요청을 정리해야 합니다.");
+assert.match(backend, /Retry-After", "2"/, "과부하 응답에 재시도 대기 시간을 안내해야 합니다.");
 assert.match(backend, /요청한 API 경로를 찾을 수 없습니다\./, "존재하지 않는 API 경로는 한국어 JSON 404를 반환해야 합니다.");
 assert.match(backend, /서버 내부 오류가 발생했습니다\./, "서버 오류 응답에 내부 상세 정보를 노출하면 안 됩니다.");
 assert.match(backend, /allowedBrowserOrigins\.has\(origin\)/, "브라우저 CORS 허용 출처를 제한해야 합니다.");
