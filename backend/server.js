@@ -66,7 +66,7 @@ app.get("/api/exchanges", (_req, res) => {
   res.json({ exchanges: EXCHANGE_IDS.map(id => ({ id, name: EXCHANGE_INFO[id].name })) });
 });
 
-app.get("/api/compare", cacheJson(8000), async (req, res) => {
+app.get("/api/compare", cacheJson(5000), async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
@@ -120,7 +120,7 @@ app.get("/api/compare", cacheJson(8000), async (req, res) => {
   });
 });
 
-app.get("/api/history", cacheJson(60000), async (req, res) => {
+app.get("/api/history", cacheJson(10000), async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
