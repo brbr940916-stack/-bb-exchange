@@ -7,13 +7,12 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 10000;
-const EXCHANGE_IDS = ["upbit", "bithumb", "coinone", "korbit"];
+const EXCHANGE_IDS = ["upbit", "bithumb", "coinone"];
 
 const EXCHANGE_INFO = {
   upbit: { name: "업비트" },
   bithumb: { name: "빗썸" },
   coinone: { name: "코인원" },
-  korbit: { name: "코빗" }
 };
 
 const instances = new Map();
