@@ -60,6 +60,10 @@ function cacheJson(ttlMs) {
 
     // 같은 URL의 동시 요청은 첫 요청의 결과를 공유해 거래소 API 중복 호출을 줄입니다.
     const pending = inFlightResponses.get(key);
+    if (!pending && inFlightResponses.size >= 100) {
+      res.set("Retry-After", "2");
+      return res.status(503).json({ error: "요청이 많습니다. 잠시 후 다시 시도해 주세요." });
+    }
     if (pending) {
       res.set("X-BB-Cache", "COALESCED");
       pending.then(({ status, body }) => {
@@ -80,9 +84,12 @@ function cacheJson(ttlMs) {
       if (inFlightResponses.get(key) === pendingResponse) inFlightResponses.delete(key);
     };
 
-    res.once("finish", () => {
+    const cleanupPending = () => {
       if (!settled) settlePending({ error: "요청을 완료하지 못했습니다." });
-    });
+    };
+    res.once("finish", cleanupPending);
+    // 클라이언트가 응답 도중 연결을 끊어도 대기 요청이 영구히 남지 않게 합니다.
+    res.once("close", cleanupPending);
     res.json = body => {
       if (res.statusCode < 400) {
         responseCache.set(key, { body, expiresAt: Date.now() + ttlMs });
