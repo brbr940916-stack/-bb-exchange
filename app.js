@@ -27,4 +27,4 @@ async function loadRankings(){
  }catch(error){rankingPanel.innerHTML="<p>순위를 불러오지 못했습니다: "+error.message+"</p>";}
 }
 document.querySelector('a[href="#rank"]')?.addEventListener("click",loadRankings);
-\nasset.addEventListener("change",load);if(quote)quote.addEventListener("change",load);kind.addEventListener("change",load);refresh.addEventListener("click",load);search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();if(["BTC","ETH","SOL","XRP","BNB"].includes(v)){asset.value=v;load();}});document.addEventListener("keydown",e=>{if(e.key==="/"&&!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)){e.preventDefault();search.focus();}});load();
+asset.addEventListener("change",load);if(quote)quote.addEventListener("change",load);kind.addEventListener("change",load);refresh.addEventListener("click",load);search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();if(["BTC","ETH","SOL","XRP","BNB"].includes(v)){asset.value=v;load();}});document.addEventListener("keydown",e=>{if(e.key==="/"&&!["INPUT","TEXTAREA"].includes(document.activeElement.tagName)){e.preventDefault();search.focus();}});load();
