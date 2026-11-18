@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const ccxt = require("ccxt");
+const http = require("http");
+const WebSocket = require("ws");
 
 const app = express();
 app.use(cors());
@@ -210,6 +212,165 @@ app.get("/", (_req, res) => {
   res.type("text").send("BB 거래소 API가 실행 중입니다. /api/health 또는 /api/compare?asset=BTC&quote=KRW 를 확인하세요.");
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`BB 거래소 API listening on port ${PORT}`);
+
+const LIVE_ASSETS = ["BTC", "ETH", "SOL", "XRP", "DOGE"];
+const liveBooks = new Map();
+const browserClients = new Set();
+const wsServer = http.createServer(app);
+const browserWss = new WebSocket.Server({ noServer: true });
+
+function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
+  const validAsks = (asks || []).map(level => ({
+    price: Number(level.price), amount: Number(level.amount)
+  })).filter(level => Number.isFinite(level.price) && level.price > 0)
+    .sort((a, b) => a.price - b.price);
+  const validBids = (bids || []).map(level => ({
+    price: Number(level.price), amount: Number(level.amount)
+  })).filter(level => Number.isFinite(level.price) && level.price > 0)
+    .sort((a, b) => b.price - a.price);
+  if (!validAsks.length) return;
+  const update = {
+    type: "orderbook",
+    asset,
+    exchange: exchangeId,
+    exchangeName: EXCHANGE_INFO[exchangeId].name,
+    bestAsk: validAsks[0],
+    bestBid: validBids[0] || null,
+    timestamp: Number(timestamp) || Date.now()
+  };
+  liveBooks.set(exchangeId + ":" + asset, update);
+  const message = JSON.stringify(update);
+  for (const client of browserClients) {
+    if (client.readyState === WebSocket.OPEN && client.asset === asset) {
+      client.send(message);
+    }
+  }
+}
+
+function handleUpbitBook(raw) {
+  const asset = String(raw.code || "").replace(/^KRW-/, "");
+  if (!LIVE_ASSETS.includes(asset) || !Array.isArray(raw.orderbook_units)) return;
+  const asks = raw.orderbook_units.map(x => ({ price: x.ask_price, amount: x.ask_size }));
+  const bids = raw.orderbook_units.map(x => ({ price: x.bid_price, amount: x.bid_size }));
+  sendLiveUpdate("upbit", asset, asks, bids, raw.timestamp);
+}
+
+function handleBithumbBook(raw) {
+  const asset = String(raw.code || "").replace(/^KRW-/, "");
+  if (!LIVE_ASSETS.includes(asset) || !Array.isArray(raw.orderbook_units)) return;
+  const asks = raw.orderbook_units.map(x => ({ price: x.ask_price, amount: x.ask_size }));
+  const bids = raw.orderbook_units.map(x => ({ price: x.bid_price, amount: x.bid_size }));
+  sendLiveUpdate("bithumb", asset, asks, bids, raw.timestamp || raw.tms);
+}
+
+function handleCoinoneBook(raw) {
+  const data = raw.data || raw.d;
+  if (!data) return;
+  const asset = String(data.target_currency || data.tc || "").toUpperCase();
+  if (!LIVE_ASSETS.includes(asset)) return;
+  const asks = (data.asks || data.a || []).map(x => ({ price: x.price ?? x.p, amount: x.qty ?? x.q }));
+  const bids = (data.bids || data.b || []).map(x => ({ price: x.price ?? x.p, amount: x.qty ?? x.q }));
+  sendLiveUpdate("coinone", asset, asks, bids, data.timestamp || data.t);
+}
+
+function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
+  let retryMs = 2000;
+  let socket;
+  let heartbeat;
+  const connect = () => {
+    socket = new WebSocket(endpoint, { handshakeTimeout: 10000 });
+    socket.on("open", () => {
+      retryMs = 2000;
+      try { subscribe(socket); } catch (_error) {}
+      heartbeat = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          if (exchangeId === "coinone") socket.send(JSON.stringify({ request_type: "PING" }));
+          else socket.ping();
+        }
+      }, 30000);
+      console.log(exchangeId + " public WebSocket connected");
+    });
+    socket.on("message", payload => {
+      try {
+        const text = payload.toString();
+        if (text === "PING" || text === "PONG") return;
+        const parsed = JSON.parse(text);
+        for (const item of Array.isArray(parsed) ? parsed : [parsed]) handler(item);
+      } catch (_error) {}
+    });
+    socket.on("close", () => {
+      if (heartbeat) clearInterval(heartbeat);
+      setTimeout(connect, retryMs);
+      retryMs = Math.min(retryMs * 2, 30000);
+    });
+    socket.on("error", () => {
+      if (socket.readyState !== WebSocket.CLOSED) socket.terminate();
+    });
+  };
+  connect();
+}
+
+function startLiveMarketStreams() {
+  const codes = LIVE_ASSETS.map(asset => "KRW-" + asset);
+  connectExchangeStream(
+    "upbit",
+    "wss://api.upbit.com/websocket/v1",
+    socket => socket.send(JSON.stringify([
+      { ticket: "bb-exchange-live" },
+      { type: "orderbook", codes }
+    ])),
+    handleUpbitBook
+  );
+  connectExchangeStream(
+    "bithumb",
+    "wss://ws-api.bithumb.com/websocket/v1",
+    socket => socket.send(JSON.stringify([
+      { ticket: "bb-exchange-live" },
+      { type: "orderbook", codes }
+    ])),
+    handleBithumbBook
+  );
+  connectExchangeStream(
+    "coinone",
+    "wss://stream.coinone.co.kr",
+    socket => LIVE_ASSETS.forEach(asset => socket.send(JSON.stringify({
+      request_type: "SUBSCRIBE",
+      channel: "ORDERBOOK",
+      topic: { quote_currency: "KRW", target_currency: asset }
+    }))),
+    handleCoinoneBook
+  );
+}
+
+wsServer.on("upgrade", (request, socket, head) => {
+  let url;
+  try { url = new URL(request.url, "http://localhost"); } catch (_error) {
+    socket.destroy();
+    return;
+  }
+  if (url.pathname !== "/ws/market") {
+    socket.destroy();
+    return;
+  }
+  const asset = String(url.searchParams.get("asset") || "BTC").toUpperCase();
+  if (!LIVE_ASSETS.includes(asset)) {
+    socket.destroy();
+    return;
+  }
+  browserWss.handleUpgrade(request, socket, head, client => {
+    client.asset = asset;
+    browserClients.add(client);
+    for (const exchangeId of EXCHANGE_IDS) {
+      const snapshot = liveBooks.get(exchangeId + ":" + asset);
+      if (snapshot && client.readyState === WebSocket.OPEN) client.send(JSON.stringify(snapshot));
+    }
+    client.on("close", () => browserClients.delete(client));
+    client.on("error", () => browserClients.delete(client));
+  });
 });
+
+wsServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`BB 거래소 API listening on port ${PORT}`);
+  startLiveMarketStreams();
+});
+
