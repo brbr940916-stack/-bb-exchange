@@ -60,6 +60,8 @@ app.get("/api/health", (_req, res) => {
     status: "ok",
     service: "BB 거래소 API",
     marketData: "국내 거래소 공개 원화 현물 시세",
+    websocket: streamStatus,
+    liveMarkets: LIVE_ASSETS,
     exchanges: EXCHANGE_IDS.map(id => ({ id, name: EXCHANGE_INFO[id].name }))
   });
 });
@@ -216,6 +218,7 @@ app.get("/", (_req, res) => {
 const LIVE_ASSETS = ["BTC", "ETH", "SOL", "XRP", "DOGE"];
 const liveBooks = new Map();
 const browserClients = new Set();
+const streamStatus = Object.fromEntries(EXCHANGE_IDS.map(id => [id, { state: "starting", connectedAt: null, lastMessageAt: null, lastUpdateAt: null, lastError: null, reconnects: 0 }]));
 const wsServer = http.createServer(app);
 const browserWss = new WebSocket.Server({ noServer: true });
 
@@ -239,6 +242,7 @@ function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
     timestamp: Number(timestamp) || Date.now()
   };
   liveBooks.set(exchangeId + ":" + asset, update);
+  streamStatus[exchangeId].lastUpdateAt = new Date(update.timestamp).toISOString();
   const message = JSON.stringify(update);
   for (const client of browserClients) {
     if (client.readyState === WebSocket.OPEN && client.asset === asset) {
@@ -260,7 +264,9 @@ function handleBithumbBook(raw) {
   if (!LIVE_ASSETS.includes(asset) || !Array.isArray(raw.orderbook_units)) return;
   const asks = raw.orderbook_units.map(x => ({ price: x.ask_price, amount: x.ask_size }));
   const bids = raw.orderbook_units.map(x => ({ price: x.bid_price, amount: x.bid_size }));
-  sendLiveUpdate("bithumb", asset, asks, bids, raw.timestamp || raw.tms);
+  const rawTimestamp = Number(raw.timestamp || raw.tms) || Date.now();
+  const timestampMs = rawTimestamp > 100000000000000 ? Math.floor(rawTimestamp / 1000) : rawTimestamp;
+  sendLiveUpdate("bithumb", asset, asks, bids, timestampMs);
 }
 
 function handleCoinoneBook(raw) {
@@ -279,8 +285,12 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
   let heartbeat;
   const connect = () => {
     socket = new WebSocket(endpoint, { handshakeTimeout: 10000 });
+    streamStatus[exchangeId].state = "connecting";
     socket.on("open", () => {
       retryMs = 2000;
+      streamStatus[exchangeId].state = "connected";
+      streamStatus[exchangeId].connectedAt = new Date().toISOString();
+      streamStatus[exchangeId].lastError = null;
       try { subscribe(socket); } catch (_error) {}
       heartbeat = setInterval(() => {
         if (socket.readyState === WebSocket.OPEN) {
@@ -295,15 +305,20 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
         const text = payload.toString();
         if (text === "PING" || text === "PONG") return;
         const parsed = JSON.parse(text);
+        streamStatus[exchangeId].lastMessageAt = new Date().toISOString();
         for (const item of Array.isArray(parsed) ? parsed : [parsed]) handler(item);
       } catch (_error) {}
     });
     socket.on("close", () => {
+      streamStatus[exchangeId].state = "reconnecting";
+      streamStatus[exchangeId].reconnects += 1;
       if (heartbeat) clearInterval(heartbeat);
       setTimeout(connect, retryMs);
       retryMs = Math.min(retryMs * 2, 30000);
     });
-    socket.on("error", () => {
+    socket.on("error", error => {
+      streamStatus[exchangeId].lastError = String(error.message || "WebSocket connection error").slice(0, 180);
+      streamStatus[exchangeId].state = "error";
       if (socket.readyState !== WebSocket.CLOSED) socket.terminate();
     });
   };
