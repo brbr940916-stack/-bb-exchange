@@ -45,3 +45,4 @@ asset.addEventListener("change",load);quote.addEventListener("change",load);refr
 search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();const aliases={"비트코인":"BTC","이더리움":"ETH","솔라나":"SOL","리플":"XRP","엑스알피":"XRP","도지코인":"DOGE"};const symbol=aliases[v]||v;if(["BTC","ETH","SOL","XRP","DOGE"].includes(symbol)){asset.value=symbol;load();}});
 document.addEventListener("keydown",e=>{if(e.key==="/"&&!(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))){e.preventDefault();search.focus();}});
 load();
+loadSnapshot();
