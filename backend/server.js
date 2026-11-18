@@ -60,10 +60,14 @@ app.get("/api/health", (_req, res) => {
   const websocket = Object.fromEntries(EXCHANGE_IDS.map(id => {
     const stream = streamStatus[id];
     const lastUpdateMs = stream.lastUpdateAt ? Date.parse(stream.lastUpdateAt) : NaN;
+    const lastMessageMs = stream.lastMessageAt ? Date.parse(stream.lastMessageAt) : NaN;
     const ageMs = Number.isFinite(lastUpdateMs) ? now - lastUpdateMs : null;
+    const messageAgeMs = Number.isFinite(lastMessageMs) ? now - lastMessageMs : null;
     return [id, {
       ...stream,
       lastUpdateAgeMs: ageMs,
+      lastMessageAgeMs: messageAgeMs,
+      hasRecentMessage: messageAgeMs !== null && messageAgeMs >= 0 && messageAgeMs < 60000,
       hasFreshData: ageMs !== null && ageMs >= 0 && ageMs < 30000
     }];
   }));
