@@ -13,3 +13,22 @@
 .pool-link{color:#d5b56a;text-decoration:none;border-bottom:1px solid #79633a;padding-bottom:2px}
 .pool-link:hover{color:#f0d99f}
 .market-table{min-width:650px}
+
+/* Ranking and fee transparency */
+.ranking-controls{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px;color:#d5b56a;font-size:10px;letter-spacing:1px}
+.ranking-controls small{color:#777;letter-spacing:0}
+#ranking-panel{overflow-x:auto}
+#ranking-panel .market-table{min-width:590px}
+#ranking-panel .data-note{max-width:850px}
+.market-table tbody tr{transition:background .2s}
+.market-table tbody tr:hover{background:rgba(213,181,106,.055)}
+.panel{box-shadow:0 16px 45px rgba(0,0,0,.16)}
+.hero{position:relative}
+.hero:after{content:"";display:block;position:absolute;right:3%;top:25%;width:min(28vw,300px);height:min(28vw,300px);border:1px solid rgba(213,181,106,.14);border-radius:50%;background:radial-gradient(circle,rgba(213,181,106,.10),rgba(213,181,106,.015) 48%,transparent 70%);pointer-events:none}
+.hero>*{position:relative;z-index:1}
+button{transition:background .2s,border-color .2s,transform .2s}
+button:hover{background:rgba(213,181,106,.10);border-color:#c9a65e;transform:translateY(-1px)}
+.search:focus-within{border-color:#b49354;box-shadow:0 0 0 3px rgba(213,181,106,.08)}
+.tiles article{transition:background .2s}
+.tiles article:hover{background:rgba(213,181,106,.035)}
+@media(max-width:850px){.hero:after{opacity:.45;right:0}}
