@@ -34,6 +34,11 @@ assert.match(backend, /X-Content-Type-Options/, "MIME 스니핑 방지 헤더를
 assert.match(backend, /X-Frame-Options/, "외부 프레임 삽입을 차단해야 합니다.");
 assert.match(backend, /Permissions-Policy/, "불필요한 브라우저 권한을 비활성화해야 합니다.");
 assert.match(backend, /express\.json\(\{ limit: "16kb" \}\)/, "JSON 요청 본문 크기를 제한해야 합니다.");
+assert.match(backend, /const inFlightResponses = new Map\(\)/, "동일한 동시 요청의 거래소 호출을 합쳐야 합니다.");
+assert.match(backend, /X-BB-Cache", "COALESCED"/, "동시 요청 병합 여부를 응답 헤더로 구분해야 합니다.");
+assert.match(backend, /pending\.then\(\(\{ status, body \}\)/, "동시 요청은 첫 요청의 응답을 안전하게 공유해야 합니다.");
+assert.match(backend, /요청한 API 경로를 찾을 수 없습니다\./, "존재하지 않는 API 경로는 한국어 JSON 404를 반환해야 합니다.");
+assert.match(backend, /서버 내부 오류가 발생했습니다\./, "서버 오류 응답에 내부 상세 정보를 노출하면 안 됩니다.");
 assert.match(backend, /allowedBrowserOrigins\.has\(origin\)/, "브라우저 CORS 허용 출처를 제한해야 합니다.");
 assert.match(backend, /methods: \["GET", "HEAD"\]/, "브라우저 CORS는 읽기 전용 요청만 허용해야 합니다.");
 assert.match(backend, /\["GET", "HEAD", "OPTIONS"\]\.includes\(req\.method\)/, "API는 상태 변경 HTTP 메서드를 거부해야 합니다.");
