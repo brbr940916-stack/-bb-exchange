@@ -16,14 +16,16 @@ async function loadStreamHealth(){
   const labels=Object.entries(names).map(([id,name])=>{
    const stream=data.websocket?.[id];
    const last=stream?.lastUpdateAt?Date.parse(stream.lastUpdateAt):0;
-   const fresh=Number.isFinite(last)&&Date.now()-last<30000;
+   const age=Date.now()-last;
+   const fresh=Number.isFinite(last)&&age>=0&&age<30000;
    const state=fresh?"수신 정상":stream?.state==="connected"?"연결·수신 대기":stream?.state==="connecting"?"연결 중":stream?.state==="reconnecting"?"재연결 중":stream?.state==="error"?"연결 오류":"대기 중";
    return name+" "+state;
   });
   const liveCount=Object.keys(names).filter(id=>{
    const value=data.websocket?.[id]?.lastUpdateAt;
    const time=value?Date.parse(value):0;
-   return Number.isFinite(time)&&Date.now()-time<30000;
+   const age=Date.now()-time;
+   return Number.isFinite(time)&&age>=0&&age<30000;
   }).length;
   streamHealthLabel.textContent="실시간 호가 "+liveCount+"/3곳 수신 · "+labels.join(" / ");
  }catch(_error){streamHealthLabel.textContent="실시간 수신 상태를 확인할 수 없습니다.";}
