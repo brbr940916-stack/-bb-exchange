@@ -1,0 +1,19 @@
+{
+  "name": "BB 거래소",
+  "short_name": "BB 거래소",
+  "description": "국내 가상자산 원화 시세 비교",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
