@@ -12,10 +12,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Check backend JavaScript syntax
-        run: node --check backend/server.js
-      - name: Check frontend JavaScript syntax
-        run: node --check app.js
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
       - name: Install backend dependencies
         working-directory: backend
         run: npm install --ignore-scripts
+      - name: Run syntax and product checks
+        working-directory: backend
+        run: npm run check
