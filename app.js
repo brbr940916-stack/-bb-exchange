@@ -103,3 +103,4 @@ document.addEventListener("keydown",e=>{if(e.key==="/"&&!(["INPUT","TEXTAREA"].i
 load();
 loadSnapshot();
 loadHistory();
+loadRankings();
