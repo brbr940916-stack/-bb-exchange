@@ -63,7 +63,8 @@ function applyLiveBook(update){
   if(b.feeAdjustedAsk!=null)return 1;
   return (a.bestAsk?.price||Infinity)-(b.bestAsk?.price||Infinity);
  });
- renderCex({...currentCompareData,results,updatedAt:new Date(update.timestamp).toISOString()});
+ const unavailable=(currentCompareData.unavailable||[]).filter(x=>x.exchange!==update.exchange);
+ renderCex({...currentCompareData,results,unavailable,updatedAt:new Date(update.timestamp).toISOString()});
  status("실시간 호가 수신 · "+results.length+"개 거래소");
 }
 function disconnectMarketSocket(){
