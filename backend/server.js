@@ -67,7 +67,7 @@ function cacheJson(ttlMs) {
     if (pending) {
       res.set("X-BB-Cache", "COALESCED");
       pending.then(({ status, body }) => {
-        if (!res.headersSent) res.status(status).json(body);
+        if (!res.destroyed && !res.headersSent) res.status(status).json(body);
       }).catch(next);
       return;
     }
@@ -77,19 +77,22 @@ function cacheJson(ttlMs) {
     inFlightResponses.set(key, pendingResponse);
     const originalJson = res.json.bind(res);
     let settled = false;
-    const settlePending = body => {
+    const settlePending = (body, status = res.statusCode) => {
       if (settled) return;
       settled = true;
-      resolvePending({ status: res.statusCode, body });
+      resolvePending({ status, body });
       if (inFlightResponses.get(key) === pendingResponse) inFlightResponses.delete(key);
     };
 
-    const cleanupPending = () => {
+    res.once("finish", () => {
       if (!settled) settlePending({ error: "요청을 완료하지 못했습니다." });
-    };
-    res.once("finish", cleanupPending);
-    // 클라이언트가 응답 도중 연결을 끊어도 대기 요청이 영구히 남지 않게 합니다.
-    res.once("close", cleanupPending);
+    });
+    // 연결이 끊긴 원 요청은 대기 중인 요청에 성공(200)이 아닌 재시도 가능한 실패로 전달합니다.
+    res.once("close", () => {
+      if (!res.writableFinished && !settled) {
+        settlePending({ error: "요청을 완료하지 못했습니다." }, 503);
+      }
+    });
     res.json = body => {
       if (res.statusCode < 400) {
         responseCache.set(key, { body, expiresAt: Date.now() + ttlMs });
