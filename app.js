@@ -192,6 +192,12 @@ loadHistory();
 loadRankings();
 loadStreamHealth();
 
+if ("serviceWorker" in navigator && window.isSecureContext) {
+ navigator.serviceWorker.register("/sw.js").catch(error=>{
+  console.warn("BB 거래소 오프라인 앱 셸을 등록하지 못했습니다.",error);
+ });
+}
+
 // 실시간 WebSocket을 주 경로로 사용하고, REST 조회는 연결 장애 대비용으로만 실행합니다.
 let lastCompareRefresh = Date.now();
 let lastSnapshotRefresh = Date.now();
