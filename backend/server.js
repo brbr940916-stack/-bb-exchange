@@ -318,6 +318,8 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
         subscribe(socket);
       } catch (error) {
         streamStatus[exchangeId].lastError = ("구독 요청 실패: " + (error.message || error)).slice(0, 180);
+        socket.terminate();
+        return;
       }
       heartbeat = setInterval(() => {
         if (socket.readyState !== WebSocket.OPEN) return;
@@ -335,6 +337,14 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
         }
       }, 30000);
       console.log(exchangeId + " public WebSocket connected");
+    });
+    // WebSocket control-frame PONG도 정상 연결 신호로 인정해
+    // 호가가 잠시 뜸한 시장에서 불필요한 재연결이 발생하지 않도록 합니다.
+    socket.on("pong", () => {
+      lastInboundAt = Date.now();
+    });
+    socket.on("ping", () => {
+      lastInboundAt = Date.now();
     });
     socket.on("message", payload => {
       try {
