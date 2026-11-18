@@ -1,11 +1,33 @@
 const API_BASE="https://bb-exchange-api.onrender.com";
-const search=document.querySelector("#search"),asset=document.querySelector("#asset"),quote=document.querySelector("#quote"),refresh=document.querySelector("#refresh"),empty=document.querySelector(".empty"),sideNote=document.querySelector(".side-note"),statusLabel=document.querySelector(".snapshot > label span");
+const search=document.querySelector("#search"),asset=document.querySelector("#asset"),quote=document.querySelector("#quote"),refresh=document.querySelector("#refresh"),empty=document.querySelector(".empty"),sideNote=document.querySelector(".side-note"),streamHealthLabel=document.querySelector("#stream-health");
 let requestNumber=0;
 let currentCompareData=null;
 let marketSocket=null;
 let marketSocketGeneration=0;
 function money(v,currency="KRW"){if(!Number.isFinite(Number(v)))return"—";return new Intl.NumberFormat("ko-KR",{style:"currency",currency,maximumFractionDigits:currency==="KRW"?0:6}).format(Number(v));}
-function status(t){if(sideNote)sideNote.textContent="● "+t;if(statusLabel)statusLabel.textContent=t;}
+function status(t){if(sideNote)sideNote.textContent="● "+t;}
+async function loadStreamHealth(){
+ if(!streamHealthLabel)return;
+ try{
+  const response=await fetch(API_BASE+"/api/health");
+  if(!response.ok)throw new Error("health unavailable");
+  const data=await response.json();
+  const names={upbit:"업비트",bithumb:"빗썸",coinone:"코인원"};
+  const labels=Object.entries(names).map(([id,name])=>{
+   const stream=data.websocket?.[id];
+   const last=stream?.lastUpdateAt?Date.parse(stream.lastUpdateAt):0;
+   const fresh=Number.isFinite(last)&&Date.now()-last<30000;
+   const state=fresh?"수신 정상":stream?.state==="connected"?"연결·수신 대기":stream?.state==="connecting"?"연결 중":stream?.state==="reconnecting"?"재연결 중":stream?.state==="error"?"연결 오류":"대기 중";
+   return name+" "+state;
+  });
+  const liveCount=Object.keys(names).filter(id=>{
+   const value=data.websocket?.[id]?.lastUpdateAt;
+   const time=value?Date.parse(value):0;
+   return Number.isFinite(time)&&Date.now()-time<30000;
+  }).length;
+  streamHealthLabel.textContent="실시간 호가 "+liveCount+"/3곳 수신 · "+labels.join(" / ");
+ }catch(_error){streamHealthLabel.textContent="실시간 수신 상태를 확인할 수 없습니다.";}
+}
 function msg(title,detail){empty.innerHTML="";const h=document.createElement("h3");h.textContent=title;const p=document.createElement("p");p.textContent=detail;empty.append(h,p);}
 function table(headers,rows){const t=document.createElement("table");t.className="market-table";const hd=document.createElement("thead"),hr=document.createElement("tr");headers.forEach(x=>{const th=document.createElement("th");th.textContent=x;hr.append(th);});hd.append(hr);const bd=document.createElement("tbody");rows.forEach(x=>bd.append(x));t.append(hd,bd);return t;}
 function cell(tr,value,cls){const td=document.createElement("td");td.textContent=value??"—";if(cls)td.className=cls;tr.append(td);}
@@ -148,12 +170,14 @@ load();
 loadSnapshot();
 loadHistory();
 loadRankings();
+loadStreamHealth();
 
 // 실시간 WebSocket을 주 경로로 사용하고, REST 조회는 연결 장애 대비용으로만 실행합니다.
 let lastCompareRefresh = Date.now();
 let lastSnapshotRefresh = Date.now();
 let lastChartRefresh = Date.now();
 let lastRankingRefresh = Date.now();
+let lastHealthRefresh = Date.now();
 let refreshLoopRunning = false;
 async function liveRefreshLoop(){
  if(refreshLoopRunning)return;
@@ -164,6 +188,7 @@ async function liveRefreshLoop(){
   if(now-lastSnapshotRefresh>=10000){await loadSnapshot();lastSnapshotRefresh=Date.now();}
   if(now-lastChartRefresh>=10000){await loadHistory();lastChartRefresh=Date.now();}
   if(now-lastRankingRefresh>=60000){await loadRankings(true);lastRankingRefresh=Date.now();}
+  if(now-lastHealthRefresh>=10000){await loadStreamHealth();lastHealthRefresh=Date.now();}
   await new Promise(resolve=>setTimeout(resolve,1000));
  }
  refreshLoopRunning=false;
