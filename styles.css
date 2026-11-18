@@ -8,3 +8,8 @@
 .market-table .price-cell{color:#e4c783;font-weight:600;font-variant-numeric:tabular-nums}
 .data-note{text-align:left;line-height:1.7;margin-top:16px}
 @media(max-width:520px){.market-table{font-size:10px}.market-table th,.market-table td{padding:10px 5px}}
+
+.empty{overflow-x:auto}
+.pool-link{color:#d5b56a;text-decoration:none;border-bottom:1px solid #79633a;padding-bottom:2px}
+.pool-link:hover{color:#f0d99f}
+.market-table{min-width:650px}
