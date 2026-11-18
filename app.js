@@ -30,7 +30,7 @@ async function loadStreamHealth(){
    return Number.isFinite(time)&&age>=0&&age<30000;
   }).length;
   streamHealthLabel.textContent="실시간 호가 "+liveCount+"/3곳 수신 · "+labels.join(" / ");
- }catch(_error){streamHealthLabel.textContent="실시간 수신 상태를 확인할 수 없습니다.";}
+ }catch(_error){lastStreamHealth=null;streamHealthLabel.textContent="실시간 수신 상태를 확인할 수 없습니다.";}
 }
 function msg(title,detail){empty.innerHTML="";const h=document.createElement("h3");h.textContent=title;const p=document.createElement("p");p.textContent=detail;empty.append(h,p);}
 function table(headers,rows){const t=document.createElement("table");t.className="market-table";const hd=document.createElement("thead"),hr=document.createElement("tr");headers.forEach(x=>{const th=document.createElement("th");th.textContent=x;hr.append(th);});hd.append(hr);const bd=document.createElement("tbody");rows.forEach(x=>bd.append(x));t.append(hd,bd);return t;}
