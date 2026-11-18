@@ -34,6 +34,60 @@ async function loadSnapshot(){
  }));
 }
 
+let historyRequest=0;
+async function loadHistory(){
+ const id=++historyRequest;
+ const chart=document.querySelector("#price-chart");
+ const chartStatus=document.querySelector("#chart-status");
+ if(!chart)return;
+ if(chartStatus)chartStatus.textContent="가격 이력 조회 중";
+ chart.textContent="최근 24시간 가격 데이터를 불러오고 있습니다.";
+ try{
+  const response=await fetch(API_BASE+"/api/history?asset="+encodeURIComponent(asset.value)+"&quote=KRW");
+  if(!response.ok)throw new Error("차트 조회 요청에 실패했습니다.");
+  const data=await response.json();
+  if(id!==historyRequest)return;
+  const series=data.results.filter(x=>x.candles?.length);
+  if(!series.length)throw new Error("표시할 가격 이력이 없습니다.");
+  drawHistory(chart,series);
+  if(chartStatus)chartStatus.textContent="최근 24시간 · "+series.length+"개 거래소";
+ }catch(error){
+  if(id!==historyRequest)return;
+  chart.textContent="가격 추이를 불러오지 못했습니다. "+error.message;
+  if(chartStatus)chartStatus.textContent="차트 데이터 없음";
+ }
+}
+function drawHistory(container,series){
+ const ns="http://www.w3.org/2000/svg";
+ const width=760,height=270,left=70,right=18,top=18,bottom=34;
+ const values=series.flatMap(s=>s.candles.map(c=>Number(c.close)).filter(Number.isFinite));
+ const min=Math.min(...values),max=Math.max(...values),range=max-min||Math.max(max*.01,1);
+ const low=min-range*.08,high=max+range*.08;
+ const allTimes=series.flatMap(s=>s.candles.map(c=>c.timestamp));
+ const minTime=Math.min(...allTimes),maxTime=Math.max(...allTimes);
+ const x=t=>left+(maxTime===minTime?0:(t-minTime)/(maxTime-minTime))*(width-left-right);
+ const y=v=>top+(high-v)/(high-low)*(height-top-bottom);
+ const svg=document.createElementNS(ns,"svg");
+ svg.setAttribute("viewBox",`0 0 ${width} ${height}`);
+ svg.setAttribute("role","presentation");
+ svg.setAttribute("class","history-svg");
+ for(let i=0;i<5;i++){
+  const yy=top+i*(height-top-bottom)/4;
+  const line=document.createElementNS(ns,"line");line.setAttribute("x1",left);line.setAttribute("x2",width-right);line.setAttribute("y1",yy);line.setAttribute("y2",yy);line.setAttribute("class","chart-grid");svg.append(line);
+  const label=document.createElementNS(ns,"text");label.setAttribute("x",left-10);label.setAttribute("y",yy+4);label.setAttribute("text-anchor","end");label.setAttribute("class","chart-axis");label.textContent=money(high-i*(high-low)/4);svg.append(label);
+ }
+ const palette=["#d5b56a","#78a9d1","#b58ad8"];
+ series.forEach((item,index)=>{
+  const points=item.candles.filter(c=>Number.isFinite(Number(c.close))).map(c=>`${x(c.timestamp)},${y(Number(c.close))}`).join(" ");
+  const line=document.createElementNS(ns,"polyline");line.setAttribute("points",points);line.setAttribute("class","chart-line");line.setAttribute("stroke",palette[index%palette.length]);svg.append(line);
+  const last=item.candles[item.candles.length-1];
+  if(last){const dot=document.createElementNS(ns,"circle");dot.setAttribute("cx",x(last.timestamp));dot.setAttribute("cy",y(Number(last.close)));dot.setAttribute("r","3.5");dot.setAttribute("fill",palette[index%palette.length]);svg.append(dot);}
+ });
+ const legend=document.createElement("div");legend.className="chart-legend";
+ series.forEach((item,index)=>{const entry=document.createElement("span");const mark=document.createElement("i");mark.style.background=palette[index%palette.length];entry.append(mark,document.createTextNode(item.name));legend.append(entry);});
+ container.replaceChildren(svg,legend);
+}
+
 const rankingPanel=document.querySelector("#ranking-panel");let rankingsLoaded=false;
 async function loadRankings(){if(!rankingPanel||rankingsLoaded)return;rankingPanel.innerHTML="<p>국내 거래소의 24시간 원화 현물 거래량을 조회하고 있습니다.</p>";
 try{const response=await fetch(API_BASE+"/api/rankings?quote=KRW");if(!response.ok)throw new Error("순위 조회 요청에 실패했습니다. (오류 "+response.status+")");const data=await response.json();const summary=document.createElement("div");summary.className="results-summary";summary.textContent="원화 현물 시장 · "+new Date(data.updatedAt).toLocaleString("ko-KR");
@@ -41,7 +95,7 @@ const rows=data.results.map(x=>{const tr=document.createElement("tr");cell(tr,St
 const note=document.createElement("p");note.className="data-note";note.textContent=data.rankingBasis;rankingPanel.append(note);rankingsLoaded=true;
 }catch(error){rankingPanel.innerHTML="";const p=document.createElement("p");p.textContent="거래량 순위를 불러오지 못했습니다: "+error.message;rankingPanel.append(p);}}
 document.querySelector('a[href="#rank"]')?.addEventListener("click",loadRankings);
-asset.addEventListener("change",load);quote.addEventListener("change",load);refresh.addEventListener("click",()=>{load();loadSnapshot();});
+asset.addEventListener("change",()=>{load();loadHistory();});quote.addEventListener("change",()=>{load();loadHistory();});refresh.addEventListener("click",()=>{load();loadSnapshot();loadHistory();});
 search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();const aliases={"비트코인":"BTC","이더리움":"ETH","솔라나":"SOL","리플":"XRP","엑스알피":"XRP","도지코인":"DOGE"};const symbol=aliases[v]||v;if(["BTC","ETH","SOL","XRP","DOGE"].includes(symbol)){asset.value=symbol;load();}});
 document.addEventListener("keydown",e=>{if(e.key==="/"&&!(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))){e.preventDefault();search.focus();}});
 load();
