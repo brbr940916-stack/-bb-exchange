@@ -34,6 +34,10 @@ function applyLiveBook(update){
  renderCex({...currentCompareData,results,updatedAt:new Date(update.timestamp).toISOString()});
  status("실시간 호가 수신 · "+results.length+"개 거래소");
 }
+function disconnectMarketSocket(){
+ marketSocketGeneration++;
+ if(marketSocket){marketSocket.onclose=null;marketSocket.close();marketSocket=null;}
+}
 function connectMarketSocket(){
  const generation=++marketSocketGeneration;
  if(marketSocket){marketSocket.onclose=null;marketSocket.close();}
@@ -145,11 +149,11 @@ loadSnapshot();
 loadHistory();
 loadRankings();
 
-// 화면은 1초마다 서버 캐시를 확인하고, 거래소 원본 API 호출은 서버 캐시 주기로 제한합니다.
-let lastCompareRefresh = 0;
-let lastSnapshotRefresh = 0;
-let lastChartRefresh = 0;
-let lastRankingRefresh = 0;
+// 실시간 WebSocket을 주 경로로 사용하고, REST 조회는 연결 장애 대비용으로만 실행합니다.
+let lastCompareRefresh = Date.now();
+let lastSnapshotRefresh = Date.now();
+let lastChartRefresh = Date.now();
+let lastRankingRefresh = Date.now();
 let refreshLoopRunning = false;
 async function liveRefreshLoop(){
  if(refreshLoopRunning)return;
@@ -165,7 +169,12 @@ async function liveRefreshLoop(){
  refreshLoopRunning=false;
 }
 document.addEventListener("visibilitychange",()=>{
- if(document.visibilityState==="visible")liveRefreshLoop();
-connectMarketSocket();
+ if(document.visibilityState==="visible"){
+  liveRefreshLoop();
+  connectMarketSocket();
+ }else{
+  disconnectMarketSocket();
+ }
 });
 liveRefreshLoop();
+connectMarketSocket();
