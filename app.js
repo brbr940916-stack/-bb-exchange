@@ -6,12 +6,14 @@ let marketSocket=null;
 let marketSocketGeneration=0;
 function money(v,currency="KRW"){if(!Number.isFinite(Number(v)))return"—";return new Intl.NumberFormat("ko-KR",{style:"currency",currency,maximumFractionDigits:currency==="KRW"?0:6}).format(Number(v));}
 function status(t){if(sideNote)sideNote.textContent="● "+t;}
+let lastStreamHealth=null;
 async function loadStreamHealth(){
  if(!streamHealthLabel)return;
  try{
   const response=await fetch(API_BASE+"/api/health");
   if(!response.ok)throw new Error("health unavailable");
   const data=await response.json();
+  lastStreamHealth=data;
   const names={upbit:"업비트",bithumb:"빗썸",coinone:"코인원"};
   const labels=Object.entries(names).map(([id,name])=>{
    const stream=data.websocket?.[id];
@@ -201,10 +203,12 @@ async function liveRefreshLoop(){
  refreshLoopRunning=true;
  while(document.visibilityState==="visible"){
   const now=Date.now();
-  if(now-lastCompareRefresh>=15000){await load(true);lastCompareRefresh=Date.now();}
-  if(now-lastSnapshotRefresh>=10000){await loadSnapshot();lastSnapshotRefresh=Date.now();}
-  if(now-lastChartRefresh>=10000){await loadHistory();lastChartRefresh=Date.now();}
-  if(now-lastRankingRefresh>=60000){await loadRankings(true);lastRankingRefresh=Date.now();}
+  const liveCount=Number(lastStreamHealth?.freshExchangeCount||0);
+  const socketUnavailable=!marketSocket||marketSocket.readyState!==WebSocket.OPEN;
+  if(now-lastCompareRefresh>=15000&&(socketUnavailable||liveCount<3)){await load(true);lastCompareRefresh=Date.now();}
+  if(now-lastSnapshotRefresh>=30000){await loadSnapshot();lastSnapshotRefresh=Date.now();}
+  if(now-lastChartRefresh>=60000){await loadHistory();lastChartRefresh=Date.now();}
+  if(now-lastRankingRefresh>=300000){await loadRankings(true);lastRankingRefresh=Date.now();}
   if(now-lastHealthRefresh>=10000){await loadStreamHealth();lastHealthRefresh=Date.now();}
   await new Promise(resolve=>setTimeout(resolve,1000));
  }
