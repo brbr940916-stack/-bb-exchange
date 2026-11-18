@@ -35,6 +35,10 @@ assert.match(backend, /X-Frame-Options/, "외부 프레임 삽입을 차단해�
 assert.match(backend, /Permissions-Policy/, "불필요한 브라우저 권한을 비활성화해야 합니다.");
 assert.match(backend, /express\.json\(\{ limit: "16kb" \}\)/, "JSON 요청 본문 크기를 제한해야 합니다.");
 assert.match(backend, /allowedBrowserOrigins\.has\(origin\)/, "브라우저 CORS 허용 출처를 제한해야 합니다.");
+assert.match(backend, /methods: \["GET", "HEAD"\]/, "브라우저 CORS는 읽기 전용 요청만 허용해야 합니다.");
+assert.match(backend, /\["GET", "HEAD", "OPTIONS"\]\.includes\(req\.method\)/, "API는 상태 변경 HTTP 메서드를 거부해야 합니다.");
+assert.match(backend, /maxAge: 600/, "CORS 사전 요청 결과를 제한된 시간만 캐시해야 합니다.");
+
 assert.match(backend, /request\.headers\.origin/, "브라우저 WebSocket 출처를 검증해야 합니다.");
 assert.match(backend, /quote !== "KRW"/, "비교 API는 KRW 이외 통화를 거부해야 합니다.");
 assert.match(backend, /market\.spot !== true/, "거래량 순위는 현물 시장만 집계해야 합니다.");
