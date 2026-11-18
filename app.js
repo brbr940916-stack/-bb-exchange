@@ -9,8 +9,8 @@ function cell(tr,value,cls){const td=document.createElement("td");td.textContent
 function renderCex(d){empty.innerHTML="";const s=document.createElement("div");s.className="results-summary";s.textContent=d.symbol+" · "+d.results.length+"개 거래소 응답 · "+new Date(d.updatedAt).toLocaleString("ko-KR");empty.append(s);
 if(!d.results.length){const p=document.createElement("p");p.textContent="현재 조회 가능한 국내 거래소가 없습니다.";empty.append(p);}
 const rows=d.results.map(x=>{const tr=document.createElement("tr");cell(tr,x.exchangeName||x.exchange);cell(tr,x.bestAsk?money(x.bestAsk.price):"—","price-cell");cell(tr,x.takerFeeRate!==null&&x.takerFeeRate!==undefined?(x.takerFeeRate*100).toFixed(3)+"%":"확인 불가");cell(tr,x.feeAdjustedAsk?money(x.feeAdjustedAsk):"수수료 확인 불가");cell(tr,x.bestBid?money(x.bestBid.price):"—");return tr;});
-if(rows.length)empty.append(table(["거래소","매도 1호가","공개 매수 수수료","수수료 반영 예상가","매수 1호가"],rows));
-const n=document.createElement("p");n.className="data-note";n.textContent="※ 공개된 기본 매수 수수료를 반영한 참고 예상가입니다. 회원 등급별 할인, 주문 수량에 따른 호가 변동 및 입출금 비용은 반영되지 않습니다.";empty.append(n);}
+if(rows.length)empty.append(table(["거래소","매도 1호가","공개 체결 수수료","수수료 반영 예상가","매수 1호가"],rows));
+const n=document.createElement("p");n.className="data-note";n.textContent="※ 공개된 기본 체결 수수료를 반영한 참고 예상가입니다. 회원 등급별 할인, 주문 수량에 따른 호가 변동 및 입출금 비용은 반영되지 않습니다.";empty.append(n);}
 async function load(){const id=++requestNumber,symbol=asset.value,q=quote.value;status("국내 거래소 시세 조회 중");refresh.disabled=true;refresh.textContent="조회 중…";msg("국내 거래소 시세를 조회하고 있습니다.","업비트, 빗썸, 코인원 공개 데이터에 연결하는 중입니다.");
 try{const response=await fetch(API_BASE+"/api/compare?asset="+encodeURIComponent(symbol)+"&quote="+encodeURIComponent(q));if(!response.ok)throw new Error("시세 조회 요청에 실패했습니다. (오류 "+response.status+")");const data=await response.json();if(id!==requestNumber)return;renderCex(data);status("국내 거래소 시세 연결됨");
 const btc=document.querySelector(".tiles article:first-child strong");if(symbol==="BTC"&&data.results?.[0]?.bestAsk&&btc)btc.textContent=money(data.results[0].bestAsk.price);
