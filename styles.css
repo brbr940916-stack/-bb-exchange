@@ -54,3 +54,9 @@ button:hover{background:rgba(213,181,106,.10);border-color:#c9a65e;transform:tra
 /* 거래소별 실시간 수신 상태 */
 #stream-health{display:inline-block;max-width:100%;line-height:1.7;letter-spacing:.4px;white-space:normal}
 .snapshot>label{display:block;line-height:1.8}
+
+
+/* 키보드 접근성 및 모션 설정 */
+:focus-visible{outline:2px solid #d5b56a;outline-offset:3px}
+nav a:focus-visible,button:focus-visible,.search input:focus-visible,.filters select:focus-visible{outline:2px solid #d5b56a;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
