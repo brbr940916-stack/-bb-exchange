@@ -307,6 +307,7 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
   let heartbeat;
   const connect = () => {
     socket = new WebSocket(endpoint, { handshakeTimeout: 10000 });
+    let lastInboundAt = Date.now();
     streamStatus[exchangeId].state = "connecting";
     socket.on("open", () => {
       retryMs = 2000;
@@ -320,6 +321,11 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
       }
       heartbeat = setInterval(() => {
         if (socket.readyState !== WebSocket.OPEN) return;
+        if (Date.now() - lastInboundAt > 90000) {
+          streamStatus[exchangeId].lastError = "90초 동안 거래소 메시지가 없어 연결을 재시작합니다.";
+          socket.terminate();
+          return;
+        }
         try {
           if (exchangeId === "coinone") socket.send(JSON.stringify({ request_type: "PING" }));
           else socket.ping();
@@ -333,10 +339,17 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
     socket.on("message", payload => {
       try {
         const text = payload.toString();
+        lastInboundAt = Date.now();
+        streamStatus[exchangeId].lastMessageAt = new Date(lastInboundAt).toISOString();
         if (text === "PING" || text === "PONG") return;
         const parsed = JSON.parse(text);
-        streamStatus[exchangeId].lastMessageAt = new Date().toISOString();
-        for (const item of Array.isArray(parsed) ? parsed : [parsed]) handler(item);
+        for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
+          if (exchangeId === "coinone" && (item.response_type === "ERROR" || item.r === "ERROR")) {
+            streamStatus[exchangeId].lastError = ("코인원 구독/스트림 오류: " + (item.message || item.error_code || "알 수 없는 오류")).slice(0, 180);
+            continue;
+          }
+          handler(item);
+        }
       } catch (error) {
         streamStatus[exchangeId].lastError = ("메시지 처리 실패: " + (error.message || error)).slice(0, 180);
       }
