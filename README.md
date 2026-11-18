@@ -1,21 +1,39 @@
-# BB Exchange API (starter)
+# BB 거래소
 
-This is a separate Node.js API service for the existing BB Exchange static website.
+대한민국 이용자를 위한 국내 가상자산 원화(KRW) 현물 시세 비교 웹사이트와 API입니다.
 
-## What it does
-- `/api/health` - health check
-- `/api/exchanges` - configured CEX list
-- `/api/compare?asset=BTC&quote=USDT` - fetches public order books from supported exchanges and sorts available markets by best ask
+## 제공 기능
 
-## Important limitations
-- Public market data only. No API keys or trading permissions are used.
-- Results are sorted by the top ask price only.
-- Trading fees, slippage for a target order size, fiat conversion, deposit/withdrawal fees, transfer time and regional access restrictions are not yet included.
-- A market can be unavailable on an exchange because the pair is not listed, the exchange blocks the server region, or its API is temporarily unavailable.
-- DEX integration and country rankings are separate future tasks. Do not treat DEX pools as centralized order books.
+- 업비트·빗썸·코인원 공개 원화 현물 호가 비교
+- 매도 1호가, 매수 1호가 및 CCXT 시장 정보의 기본 체결 수수료 표시
+- 기본 체결 수수료를 확인할 수 있는 경우 수수료 반영 매수 예상가 계산
+- 최근 24시간의 1시간 봉 종가 비교 차트
+- 거래소가 공개한 24시간 원화 현물 거래량 참고 순위
+- 한국어 화면 및 블랙·골드 디자인
 
-## Deploy on Render
-Create a **new Web Service** (keep the existing Static Site for the website).
+## API
+
+- `GET /api/health` — API 상태 및 지원 거래소
+- `GET /api/exchanges` — 지원 거래소 목록
+- `GET /api/compare?asset=BTC&quote=KRW` — 거래소별 최우선 호가 및 수수료 정보
+- `GET /api/history?asset=BTC&quote=KRW` — 최근 1시간 봉 최대 24개
+- `GET /api/rankings?quote=KRW` — 거래소별 공개 24시간 원화 현물 거래량 참고 순위
+
+## 로컬 실행
+
+백엔드:
+
+```bash
+cd backend
+npm install
+npm start
+```
+
+정적 프론트엔드는 `index.html`, `styles.css`, `app.js`를 정적 호스팅에 배포합니다. 프론트엔드 API 주소는 `app.js` 상단의 `API_BASE`에서 설정합니다.
+
+## Render 배포 설정
+
+백엔드 Web Service:
 - Repository: `brbr940916-stack/-bb-exchange`
 - Branch: `main`
 - Root Directory: `backend`
@@ -23,16 +41,20 @@ Create a **new Web Service** (keep the existing Static Site for the website).
 - Build Command: `npm install`
 - Start Command: `npm start`
 - Health Check Path: `/api/health`
-- Instance: Free for initial testing
 
-The `backend` folder must be uploaded to the root of the GitHub repository so that `backend/package.json` and `backend/server.js` exist.
+프론트엔드 정적 사이트는 저장소 루트의 `index.html`을 게시합니다.
 
-After deployment, test:
-`https://YOUR-BACKEND.onrender.com/api/health`
-`https://YOUR-BACKEND.onrender.com/api/compare?asset=BTC&quote=USDT`
+## 데이터 해석 및 제한
 
-## Frontend connection
-Once the Web Service URL is known, the website's `app.js` can call:
-`https://YOUR-BACKEND.onrender.com/api/compare?asset=BTC&quote=USDT`
+- 모든 시세는 거래소 공개 API에서 조회하며, API 지연·점검·지역 제한·거래소별 응답 차이로 일부 값이 없을 수 있습니다.
+- 표시되는 기본 체결 수수료는 거래소/CCXT 시장 메타데이터에 기반한 참고값이며, 계정 등급·이벤트 할인 등 개인별 실제 수수료와 다를 수 있습니다.
+- 수수료 반영 예상가는 최우선 매도 호가에 공개 기본 체결 수수료를 단순 적용한 값입니다. 주문 수량, 호가 잔량, 슬리피지, 입출금 수수료 및 전송 시간을 반영한 실제 체결 견적이 아닙니다.
+- 거래량 순위는 각 거래소가 공개한 24시간 원화 현물 `quoteVolume` 합산값을 사용합니다. 거래소별 집계 방식·시장 범위가 다를 수 있어 독립 검증된 공식 순위가 아닙니다.
+- 차트는 거래소가 제공하는 최근 1시간 봉 최대 24개를 사용합니다. 거래소별 캔들 제공 범위와 갱신 시각이 다를 수 있습니다.
+- 이 서비스는 정보 비교용이며 주문 실행, 투자 자문 또는 수익 보장을 제공하지 않습니다.
+- 현재 지원 범위는 대한민국 국내 거래소 3곳의 KRW 현물 시장입니다. 해외 거래소·DEX·다른 법정화폐 시장은 포함하지 않습니다.
 
-Keep the backend URL in one configuration constant in the frontend. Do not expose private API keys in browser code.
+## 보안
+
+- 공개 시세 조회에는 개인 API 키가 필요하지 않습니다.
+- 개인 API 키, 비밀번호 또는 거래소 로그인 정보를 프론트엔드 코드나 저장소에 올리지 마세요.
