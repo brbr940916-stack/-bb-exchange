@@ -91,10 +91,19 @@ async function loadSnapshot(){
    const response=await fetch(API_BASE+"/api/compare?asset="+symbol+"&quote=KRW");
    if(!response.ok)throw new Error("조회 실패");
    const data=await response.json();
-   const best=data.results?.filter(x=>x.bestAsk?.price).sort((a,b)=>a.bestAsk.price-b.bestAsk.price)[0];
+   const candidates=data.results?.filter(x=>x.bestAsk?.price)||[];
+   candidates.sort((a,b)=>{
+    const aValue=a.feeAdjustedAsk??a.bestAsk.price;
+    const bValue=b.feeAdjustedAsk??b.bestAsk.price;
+    if(a.feeAdjustedAsk!=null&&b.feeAdjustedAsk==null)return -1;
+    if(a.feeAdjustedAsk==null&&b.feeAdjustedAsk!=null)return 1;
+    return aValue-bValue;
+   });
+   const best=candidates[0];
    if(best&&cards[index]){
-    cards[index].querySelector("strong").textContent=money(best.bestAsk.price);
-    cards[index].querySelector("p").textContent="최저 매도 1호가 · "+(best.exchangeName||best.exchange);
+    const estimate=best.feeAdjustedAsk??best.bestAsk.price;
+    cards[index].querySelector("strong").textContent=money(estimate);
+    cards[index].querySelector("p").textContent=(best.feeAdjustedAsk!=null?"수수료 반영 예상가 · ":"매도 1호가 · ")+(best.exchangeName||best.exchange);
    }else if(cards[index])cards[index].querySelector("p").textContent="현재 거래 가능한 원화 시장 없음";
   }catch(_error){if(cards[index])cards[index].querySelector("p").textContent="시세 조회 대기";}
  }));
