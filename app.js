@@ -105,21 +105,25 @@ loadSnapshot();
 loadHistory();
 loadRankings();
 
-// 화면이 열려 있을 때만 자동 갱신해 불필요한 API 호출을 줄입니다.
-let lastSlowRefresh = Date.now();
-setInterval(() => {
- if (document.visibilityState !== "visible") return;
- load();
- loadSnapshot();
- if (Date.now() - lastSlowRefresh >= 60000) {
-  loadHistory();
-  loadRankings(true);
-  lastSlowRefresh = Date.now();
+// 화면은 1초마다 서버 캐시를 확인하고, 거래소 원본 API 호출은 서버 캐시 주기로 제한합니다.
+let lastSnapshotRefresh = 0;
+let lastChartRefresh = 0;
+let lastRankingRefresh = 0;
+let refreshLoopRunning = false;
+async function liveRefreshLoop(){
+ if(refreshLoopRunning)return;
+ refreshLoopRunning=true;
+ while(document.visibilityState==="visible"){
+  const now=Date.now();
+  await load();
+  if(now-lastSnapshotRefresh>=5000){await loadSnapshot();lastSnapshotRefresh=Date.now();}
+  if(now-lastChartRefresh>=10000){await loadHistory();lastChartRefresh=Date.now();}
+  if(now-lastRankingRefresh>=60000){await loadRankings(true);lastRankingRefresh=Date.now();}
+  await new Promise(resolve=>setTimeout(resolve,1000));
  }
-}, 30000);
-document.addEventListener("visibilitychange", () => {
- if (document.visibilityState === "visible") {
-  load();
-  loadSnapshot();
- }
+ refreshLoopRunning=false;
+}
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="visible")liveRefreshLoop();
 });
+liveRefreshLoop();
