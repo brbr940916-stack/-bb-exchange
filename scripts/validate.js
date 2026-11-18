@@ -17,7 +17,7 @@ assert.match(html, /rel="manifest" href="\/site\.webmanifest"/, "모바일 설�
 assert.match(frontend, /serviceWorker\.register\("\/sw\.js"\)/, "HTTPS 환경에서 오프라인 앱 셸을 등록해야 합니다.");
 const serviceWorker = fs.readFileSync(path.join(root, "sw.js"), "utf8");
 assert.match(serviceWorker, /request\.mode !== "navigate"/, "서비스 워커는 앱 화면과 정적 파일만 캐시해야 합니다.");
-assert.match(serviceWorker, /api\//, "서비스 워커가 API 응답을 캐시하지 않아야 합니다.");
+assert.doesNotMatch(serviceWorker, /\/api\//, "서비스 워커가 API 응답을 캐시하면 안 됩니다.");
 for (const exchange of ["upbit", "bithumb", "coinone"]) {
   assert.ok(backend.includes(exchange), exchange + " 연동 코드가 있어야 합니다.");
 }
