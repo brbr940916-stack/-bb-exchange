@@ -29,6 +29,13 @@ for (const exchange of ["upbit", "bithumb", "coinone"]) {
 for (const route of ["/api/health", "/api/compare", "/api/history", "/api/rankings", "/ws/market"]) {
   assert.ok(backend.includes(route), route + " 경로가 있어야 합니다.");
 }
+assert.match(backend, /app\.disable\("x-powered-by"\)/, "Express 서버 정보 노출을 비활성화해야 합니다.");
+assert.match(backend, /X-Content-Type-Options/, "MIME 스니핑 방지 헤더를 제공해야 합니다.");
+assert.match(backend, /X-Frame-Options/, "외부 프레임 삽입을 차단해야 합니다.");
+assert.match(backend, /Permissions-Policy/, "불필요한 브라우저 권한을 비활성화해야 합니다.");
+assert.match(backend, /express\.json\(\{ limit: "16kb" \}\)/, "JSON 요청 본문 크기를 제한해야 합니다.");
+assert.match(backend, /allowedBrowserOrigins\.has\(origin\)/, "브라우저 CORS 허용 출처를 제한해야 합니다.");
+assert.match(backend, /request\.headers\.origin/, "브라우저 WebSocket 출처를 검증해야 합니다.");
 assert.match(backend, /quote !== "KRW"/, "비교 API는 KRW 이외 통화를 거부해야 합니다.");
 assert.match(backend, /market\.spot !== true/, "거래량 순위는 현물 시장만 집계해야 합니다.");
 assert.match(backend, /market\.taker !== null && market\.taker !== undefined/, "공개 수수료 누락값을 0%로 처리하면 안 됩니다.");
