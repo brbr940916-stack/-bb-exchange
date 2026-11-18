@@ -26,18 +26,21 @@ self.addEventListener("fetch", event => {
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
+    let response;
     try {
-      const response = await fetch(request);
-      if (response.ok) {
-        cache.put(request, response.clone());
-        if (request.mode === "navigate") cache.put("/index.html", response.clone());
-      }
-      return response;
+      response = await fetch(request);
     } catch (_error) {
       const cached = await cache.match(request) || (request.mode === "navigate" ? await cache.match("/index.html") : null);
       return cached || new Response("오프라인 상태입니다. 네트워크 연결 후 다시 시도해 주세요.", {
         status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" }
       });
     }
+    if (response.ok) {
+      event.waitUntil(cache.put(request, response.clone()).catch(() => {}));
+      if (request.mode === "navigate") {
+        event.waitUntil(cache.put("/index.html", response.clone()).catch(() => {}));
+      }
+    }
+    return response;
   })());
 });
