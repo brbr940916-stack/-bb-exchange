@@ -100,3 +100,4 @@ search.addEventListener("input",()=>{const v=search.value.trim().toUpperCase();c
 document.addEventListener("keydown",e=>{if(e.key==="/"&&!(["INPUT","TEXTAREA"].includes(document.activeElement.tagName))){e.preventDefault();search.focus();}});
 load();
 loadSnapshot();
+loadHistory();
