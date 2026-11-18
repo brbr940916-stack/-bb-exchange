@@ -5,8 +5,25 @@ const http = require("http");
 const WebSocket = require("ws");
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const allowedBrowserOrigins = new Set([
+  "https://bb-exchange.onrender.com",
+  "http://localhost:3000",
+  "http://127.0.0.1:5500"
+]);
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+  });
+  next();
+});
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedBrowserOrigins.has(origin))
+}));
+app.use(express.json({ limit: "16kb" }));
 
 const PORT = process.env.PORT || 10000;
 const EXCHANGE_IDS = ["upbit", "bithumb", "coinone"];
@@ -423,7 +440,8 @@ wsServer.on("upgrade", (request, socket, head) => {
     socket.destroy();
     return;
   }
-  if (url.pathname !== "/ws/market") {
+  const origin = request.headers.origin;
+  if ((origin && !allowedBrowserOrigins.has(origin)) || url.pathname !== "/ws/market") {
     socket.destroy();
     return;
   }
