@@ -38,7 +38,8 @@ assert.match(backend, /const inFlightResponses = new Map\(\)/, "동일한 동시
 assert.match(backend, /X-BB-Cache", "COALESCED"/, "동시 요청 병합 여부를 응답 헤더로 구분해야 합니다.");
 assert.match(backend, /pending\.then\(\(\{ status, body \}\)/, "동시 요청은 첫 요청의 응답을 안전하게 공유해야 합니다.");
 assert.match(backend, /inFlightResponses\.size >= 100/, "동시 신규 API 작업 수에 상한을 둬야 합니다.");
-assert.match(backend, /res\.once\("close", cleanupPending\)/, "클라이언트 연결 종료 시 대기 요청을 정리해야 합니다.");
+assert.match(backend, /res\.once\("close", \(\) => \{[\s\S]*?res\.writableFinished[\s\S]*?settlePending\([\s\S]*?503/, "클라이언트 연결 종료는 대기 요청에 재시도 가능한 실패로 전달해야 합니다.");
+assert.match(backend, /!res\.destroyed && !res\.headersSent/, "연결이 끊긴 대기 응답에 쓰기를 시도하면 안 됩니다.");
 assert.match(backend, /Retry-After", "2"/, "과부하 응답에 재시도 대기 시간을 안내해야 합니다.");
 assert.match(backend, /요청한 API 경로를 찾을 수 없습니다\./, "존재하지 않는 API 경로는 한국어 JSON 404를 반환해야 합니다.");
 assert.match(backend, /서버 내부 오류가 발생했습니다\./, "서버 오류 응답에 내부 상세 정보를 노출하면 안 됩니다.");
