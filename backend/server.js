@@ -93,6 +93,53 @@ app.get("/api/compare", async (req, res) => {
   });
 });
 
+
+app.get("/api/dex", async (req, res) => {
+  const asset = String(req.query.asset || "BTC").trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,15}$/.test(asset)) {
+    return res.status(400).json({ error: "Invalid asset symbol." });
+  }
+
+  try {
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(asset)}`, {
+      headers: { "accept": "application/json" },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!response.ok) throw new Error(`DEX data provider returned HTTP ${response.status}`);
+    const payload = await response.json();
+    const pairs = (payload.pairs || [])
+      .filter(pair => String(pair.baseToken?.symbol || "").toUpperCase() === asset)
+      .map(pair => ({
+        chain: pair.chainId || null,
+        dex: pair.dexId || null,
+        pairAddress: pair.pairAddress || null,
+        baseSymbol: pair.baseToken?.symbol || asset,
+        quoteSymbol: pair.quoteToken?.symbol || null,
+        priceUsd: Number(pair.priceUsd) || null,
+        liquidityUsd: Number(pair.liquidity?.usd) || 0,
+        volume24hUsd: Number(pair.volume?.h24) || 0,
+        priceChange24h: Number(pair.priceChange?.h24) || null,
+        url: pair.url || null,
+        source: "DexScreener"
+      }))
+      .sort((a, b) => b.liquidityUsd - a.liquidityUsd)
+      .slice(0, 30);
+
+    res.json({
+      asset,
+      provider: "DexScreener",
+      updatedAt: new Date().toISOString(),
+      methodology: "Exact base-token symbol match; sorted by reported USD pool liquidity. Symbols can be shared by unrelated tokens; verify token contract and chain before trading.",
+      results: pairs
+    });
+  } catch (error) {
+    res.status(502).json({
+      error: "DEX market data unavailable",
+      detail: String(error.message || "Provider request failed").slice(0, 180)
+    });
+  }
+});
+
 app.get("/", (_req, res) => {
   res.type("text").send("BB Exchange API is running. Try /api/health or /api/compare?asset=BTC&quote=USDT");
 });
