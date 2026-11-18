@@ -31,8 +31,8 @@ function getExchange(id) {
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
-    service: "BB Exchange API",
-    marketData: "public exchange APIs",
+    service: "BB 거래소 API",
+    marketData: "국내 거래소 공개 시세",
     exchanges: EXCHANGE_IDS
   });
 });
@@ -204,7 +204,7 @@ app.get("/api/dex", async (req, res) => {
 });
 
 app.get("/", (_req, res) => {
-  res.type("text").send("BB Exchange API is running. Try /api/health or /api/compare?asset=BTC&quote=KRW");
+  res.type("text").send("BB 거래소 API가 실행 중입니다. /api/health 또는 /api/compare?asset=BTC&quote=KRW 를 확인하세요.");
 });
 
 app.listen(PORT, "0.0.0.0", () => {
