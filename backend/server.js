@@ -12,6 +12,17 @@ const EXCHANGE_IDS = [
   "kraken", "coinbase", "bitget", "gateio"
 ];
 
+const EXCHANGE_INFO = {
+  binance: { name: "Binance", jurisdiction: "Global", countryCode: "GL", note: "Global group; operating entities vary by region" },
+  bybit: { name: "Bybit", jurisdiction: "United Arab Emirates", countryCode: "AE", note: "Regional legal entities and access restrictions apply" },
+  okx: { name: "OKX", jurisdiction: "Seychelles", countryCode: "SC", note: "Regional legal entities and access restrictions apply" },
+  kucoin: { name: "KuCoin", jurisdiction: "Seychelles", countryCode: "SC", note: "Regional legal entities and access restrictions apply" },
+  kraken: { name: "Kraken", jurisdiction: "United States", countryCode: "US", note: "Regional availability varies" },
+  coinbase: { name: "Coinbase", jurisdiction: "United States", countryCode: "US", note: "Regional availability varies" },
+  bitget: { name: "Bitget", jurisdiction: "Seychelles", countryCode: "SC", note: "Regional legal entities and access restrictions apply" },
+  gateio: { name: "Gate.io", jurisdiction: "Cayman Islands", countryCode: "KY", note: "Regional legal entities and access restrictions apply" }
+};
+
 const instances = new Map();
 
 function getExchange(id) {
@@ -57,6 +68,9 @@ app.get("/api/compare", async (req, res) => {
       const book = await exchange.fetchOrderBook(symbol, 20);
       const bestAsk = book.asks?.[0];
       const bestBid = book.bids?.[0];
+      const market = exchange.markets[symbol];
+      const takerFeeRate = Number.isFinite(Number(market.taker)) ? Number(market.taker) : null;
+      const feeAdjustedAsk = bestAsk && takerFeeRate !== null ? bestAsk[0] * (1 + takerFeeRate) : null;
 
       return {
         exchange: id,
@@ -64,8 +78,11 @@ app.get("/api/compare", async (req, res) => {
         available: Boolean(bestAsk),
         bestAsk: bestAsk ? { price: bestAsk[0], amount: bestAsk[1] } : null,
         bestBid: bestBid ? { price: bestBid[0], amount: bestBid[1] } : null,
+        takerFeeRate,
+        feeAdjustedAsk,
+        feeEstimateAvailable: feeAdjustedAsk !== null,
         timestamp: book.timestamp || Date.now(),
-        source: "exchange order book",
+        source: "exchange order book + public market metadata",
         feeIncluded: false
       };
     } catch (error) {
@@ -80,19 +97,75 @@ app.get("/api/compare", async (req, res) => {
 
   const available = results
     .filter((item) => item.available && item.bestAsk)
-    .sort((a, b) => a.bestAsk.price - b.bestAsk.price);
+    .sort((a, b) => {
+      if (a.feeAdjustedAsk !== null && b.feeAdjustedAsk !== null) return a.feeAdjustedAsk - b.feeAdjustedAsk;
+      return a.bestAsk.price - b.bestAsk.price;
+    });
 
   res.json({
     asset,
     quote,
     symbol,
     updatedAt: new Date().toISOString(),
-    methodology: "Sorted by top ask price. Trading fees, slippage, transfer costs and regional restrictions are not included.",
+    methodology: "Sorted by estimated ask price including public market taker fee when available. Fees may differ by account tier, promotions and jurisdiction. Slippage, fiat conversion, transfer costs and regional restrictions are not included.",
     results: available,
     unavailable: results.filter((item) => !item.available)
   });
 });
 
+
+app.get("/api/rankings", async (req, res) => {
+  const quote = String(req.query.quote || "USDT").toUpperCase();
+  if (!["USDT", "USD", "USDC"].includes(quote)) {
+    return res.status(400).json({ error: "Supported ranking quote currencies: USDT, USD, USDC." });
+  }
+
+  const results = await Promise.all(EXCHANGE_IDS.map(async (id) => {
+    try {
+      const exchange = getExchange(id);
+      await exchange.loadMarkets();
+      const tickers = await exchange.fetchTickers();
+      let quoteVolume24h = 0;
+      let marketsCount = 0;
+      for (const [symbol, ticker] of Object.entries(tickers)) {
+        const market = exchange.markets[symbol];
+        if (!market || market.spot !== true || market.quote !== quote) continue;
+        const volume = Number(ticker.quoteVolume);
+        if (Number.isFinite(volume) && volume > 0) {
+          quoteVolume24h += volume;
+          marketsCount += 1;
+        }
+      }
+      const info = EXCHANGE_INFO[id];
+      return {
+        exchange: id, name: info.name, jurisdiction: info.jurisdiction,
+        countryCode: info.countryCode, note: info.note, quote,
+        quoteVolume24h: quoteVolume24h || null, marketsCount,
+        available: quoteVolume24h > 0, source: "public exchange tickers",
+        updatedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      const info = EXCHANGE_INFO[id];
+      return {
+        exchange: id, name: info.name, jurisdiction: info.jurisdiction,
+        countryCode: info.countryCode, quote, quoteVolume24h: null,
+        marketsCount: 0, available: false,
+        reason: String(error.message || "Volume data unavailable").slice(0, 160)
+      };
+    }
+  }));
+
+  const ranked = results.filter(item => item.available)
+    .sort((a, b) => b.quoteVolume24h - a.quoteVolume24h)
+    .map((item, index) => ({ ...item, rank: index + 1 }));
+
+  res.json({
+    quote, updatedAt: new Date().toISOString(),
+    rankingBasis: "Sum of reported 24h spot quoteVolume for markets quoted in selected currency. Exchange-reported volumes are not independently audited.",
+    jurisdictionNote: "Jurisdiction is a reference to a commonly associated legal/operating base, not a statement that the exchange is headquartered there or available to residents of that country. Check each exchange's local entity and restrictions.",
+    results: ranked, unavailable: results.filter(item => !item.available)
+  });
+});
 
 app.get("/api/dex", async (req, res) => {
   const asset = String(req.query.asset || "BTC").trim().toUpperCase();
