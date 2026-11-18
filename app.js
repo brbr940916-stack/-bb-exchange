@@ -90,7 +90,7 @@ function connectMarketSocket(){
 }
 async function load(silent=false){const id=++requestNumber,symbol=asset.value,q=quote.value;if(!silent){status("국내 거래소 시세 조회 중");refresh.disabled=true;refresh.textContent="조회 중…";msg("국내 거래소 시세를 조회하고 있습니다.","업비트, 빗썸, 코인원 공개 데이터에 연결하는 중입니다.");}
 try{const response=await fetch(API_BASE+"/api/compare?asset="+encodeURIComponent(symbol)+"&quote="+encodeURIComponent(q));if(!response.ok)throw new Error("시세 조회 요청에 실패했습니다. (오류 "+response.status+")");const data=await response.json();if(id!==requestNumber)return;renderCex(data);status(data.results?.length?"국내 거래소 "+data.results.length+"곳 시세 수신":"거래 가능한 국내 시세 없음");
-const btc=document.querySelector(".tiles article:first-child strong");if(symbol==="BTC"&&data.results?.[0]?.bestAsk&&btc)btc.textContent=money(data.results[0].bestAsk.price);
+const btc=document.querySelector(".tiles article:first-child");if(symbol==="BTC"&&btc){const candidates=(data.results||[]).filter(x=>x.bestAsk?.price).sort((a,b)=>{if(a.feeAdjustedAsk!=null&&b.feeAdjustedAsk==null)return -1;if(a.feeAdjustedAsk==null&&b.feeAdjustedAsk!=null)return 1;return (a.feeAdjustedAsk??a.bestAsk.price)-(b.feeAdjustedAsk??b.bestAsk.price);});const best=candidates[0];if(best){btc.querySelector("strong").textContent=money(best.feeAdjustedAsk??best.bestAsk.price);btc.querySelector("p").textContent=(best.feeAdjustedAsk!=null?"수수료 반영 예상가 · ":"매도 1호가 · ")+(best.exchangeName||best.exchange);}}
 }catch(e){if(id!==requestNumber)return;msg("시세 데이터를 불러오지 못했습니다.",e.message+" 잠시 후 다시 시도해 주세요.");status("데이터 연결 오류");}
 finally{if(id===requestNumber&&!silent){refresh.disabled=false;refresh.textContent="새로고침";}}}
 
