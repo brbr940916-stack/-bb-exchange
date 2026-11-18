@@ -33,6 +33,8 @@ assert.match(backend, /app\.disable\("x-powered-by"\)/, "Express 서버 정보 �
 assert.match(backend, /X-Content-Type-Options/, "MIME 스니핑 방지 헤더를 제공해야 합니다.");
 assert.match(backend, /X-Frame-Options/, "외부 프레임 삽입을 차단해야 합니다.");
 assert.match(backend, /Permissions-Policy/, "불필요한 브라우저 권한을 비활성화해야 합니다.");
+assert.match(backend, /Content-Security-Policy.*default-src 'none'/, "API 응답의 콘텐츠 실행을 기본 차단해야 합니다.");
+assert.match(backend, /Strict-Transport-Security.*max-age=31536000/, "HTTPS 접속에 HSTS 정책을 제공해야 합니다.");
 assert.match(backend, /express\.json\(\{ limit: "16kb" \}\)/, "JSON 요청 본문 크기를 제한해야 합니다.");
 assert.match(backend, /const inFlightResponses = new Map\(\)/, "동일한 동시 요청의 거래소 호출을 합쳐야 합니다.");
 assert.match(backend, /X-BB-Cache", "COALESCED"/, "동시 요청 병합 여부를 응답 헤더로 구분해야 합니다.");
