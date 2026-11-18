@@ -77,7 +77,8 @@ function drawHistory(container,series){
   const line=document.createElementNS(ns,"line");line.setAttribute("x1",left);line.setAttribute("x2",width-right);line.setAttribute("y1",yy);line.setAttribute("y2",yy);line.setAttribute("class","chart-grid");svg.append(line);
   const label=document.createElementNS(ns,"text");label.setAttribute("x",left-10);label.setAttribute("y",yy+4);label.setAttribute("text-anchor","end");label.setAttribute("class","chart-axis");label.textContent=money(high-i*(high-low)/4);svg.append(label);
  }
- const palette=["#d5b56a","#78a9d1","#b58ad8"];\n for(let i=0;i<3;i++){const t=minTime+(maxTime-minTime)*i/2;const label=document.createElementNS(ns,"text");label.setAttribute("x",x(t));label.setAttribute("y",height-8);label.setAttribute("text-anchor",i===0?"start":i===2?"end":"middle");label.setAttribute("class","chart-axis");label.textContent=new Date(t).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});svg.append(label);}
+ const palette=["#d5b56a","#78a9d1","#b58ad8"];
+ for(let i=0;i<3;i++){const t=minTime+(maxTime-minTime)*i/2;const label=document.createElementNS(ns,"text");label.setAttribute("x",x(t));label.setAttribute("y",height-8);label.setAttribute("text-anchor",i===0?"start":i===2?"end":"middle");label.setAttribute("class","chart-axis");label.textContent=new Date(t).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});svg.append(label);}
  series.forEach((item,index)=>{
   const points=item.candles.filter(c=>Number.isFinite(Number(c.close))).map(c=>`${x(c.timestamp)},${y(Number(c.close))}`).join(" ");
   const line=document.createElementNS(ns,"polyline");line.setAttribute("points",points);line.setAttribute("class","chart-line");line.setAttribute("stroke",palette[index%palette.length]);svg.append(line);
