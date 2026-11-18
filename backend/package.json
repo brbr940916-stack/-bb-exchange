@@ -5,7 +5,8 @@
   "description": "BB 거래소 국내 원화 현물 시세 비교 API",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node --check server.js && node --check ../app.js && node ../scripts/validate.js"
   },
   "engines": {
     "node": ">=20"
