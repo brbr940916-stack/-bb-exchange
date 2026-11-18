@@ -37,6 +37,9 @@ assert.match(backend, /구독 요청 실패:/, "실시간 스트림 구독 오�
 assert.match(backend, /lastMessageAgeMs: messageAgeMs/, "실시간 메시지 수신 시각을 진단해야 합니다.");
 assert.match(backend, /hasRecentMessage:/, "최근 메시지 수신 여부를 상태 API에 제공해야 합니다.");
 assert.match(backend, /90초 동안 거래소 메시지가 없어/, "정체된 실시간 연결은 자동 재연결해야 합니다.");
+assert.match(backend, /socket\.on\("pong"/, "WebSocket PONG 프레임을 연결 생존 신호로 처리해야 합니다.");
+assert.match(backend, /socket\.on\("ping"/, "WebSocket PING 프레임을 연결 생존 신호로 처리해야 합니다.");
+assert.match(backend, /socket\.terminate\(\);\s*return;/, "구독 요청 실패 시 잘못된 연결을 재시도해야 합니다.");
 assert.match(backend, /코인원 구독\/스트림 오류:/, "코인원 구독 오류를 감지해야 합니다.");
 assert.match(frontend, /age>=0&&age<30000/, "미래 시각을 실시간 수신으로 오인하면 안 됩니다.");
 assert.match(frontend, /disconnectMarketSocket\(\)/, "화면 비활성화 시 브라우저 소켓을 닫아야 합니다.");
