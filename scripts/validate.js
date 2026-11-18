@@ -43,6 +43,12 @@ assert.match(backend, /메시지 처리 실패:/, "실시간 스트림 메시지
 assert.match(backend, /구독 요청 실패:/, "실시간 스트림 구독 오류를 진단해야 합니다.");
 assert.match(backend, /lastMessageAgeMs: messageAgeMs/, "실시간 메시지 수신 시각을 진단해야 합니다.");
 assert.match(backend, /hasRecentMessage:/, "최근 메시지 수신 여부를 상태 API에 제공해야 합니다.");
+assert.match(backend, /maxPayload: 1024/, "브라우저 WebSocket 입력 크기를 제한해야 합니다.");
+assert.match(backend, /perMessageDeflate: false/, "불필요한 WebSocket 압축을 비활성화해야 합니다.");
+assert.match(backend, /updateTimestamp < now - 120000 \|\| updateTimestamp > now \+ 5000/, "오래되거나 미래 시각인 호가를 실시간 데이터로 노출하면 안 됩니다.");
+assert.match(backend, /snapshotAge >= 0 && snapshotAge < 30000/, "브라우저 연결 시 오래된 호가 스냅샷을 전송하면 안 됩니다.");
+assert.match(backend, /browserClients\.delete\(client\);\s*client\.terminate\(\);/, "브라우저 WebSocket 전송 오류 연결을 정리해야 합니다.");
+
 assert.match(backend, /90초 동안 거래소 메시지가 없어/, "정체된 실시간 연결은 자동 재연결해야 합니다.");
 assert.match(backend, /socket\.on\("pong"/, "WebSocket PONG 프레임을 연결 생존 신호로 처리해야 합니다.");
 assert.match(backend, /socket\.on\("ping"/, "WebSocket PING 프레임을 연결 생존 신호로 처리해야 합니다.");
