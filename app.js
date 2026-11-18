@@ -60,7 +60,8 @@ async function loadHistory(){
 function drawHistory(container,series){
  const ns="http://www.w3.org/2000/svg";
  const width=760,height=270,left=70,right=18,top=18,bottom=34;
- const values=series.flatMap(s=>s.candles.map(c=>Number(c.close)).filter(Number.isFinite));
+ const values=series.flatMap(s=>s.candles.map(c=>Number(c.close)).filter(v=>Number.isFinite(v)&&v>0));
+ if(!values.length){container.textContent="표시할 수 있는 가격 데이터가 없습니다.";return;}
  const min=Math.min(...values),max=Math.max(...values),range=max-min||Math.max(max*.01,1);
  const low=min-range*.08,high=max+range*.08;
  const allTimes=series.flatMap(s=>s.candles.map(c=>c.timestamp));
