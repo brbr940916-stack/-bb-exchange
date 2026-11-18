@@ -22,6 +22,8 @@ assert.match(backend, /market\.spot !== true/, "거래량 순위는 현물 시�
 assert.match(backend, /market\.taker !== null && market\.taker !== undefined/, "공개 수수료 누락값을 0%로 처리하면 안 됩니다.");
 assert.match(backend, /메시지 처리 실패:/, "실시간 스트림 메시지 처리 오류를 진단해야 합니다.");
 assert.match(backend, /구독 요청 실패:/, "실시간 스트림 구독 오류를 진단해야 합니다.");
+assert.match(backend, /lastMessageAgeMs: messageAgeMs/, "실시간 메시지 수신 시각을 진단해야 합니다.");
+assert.match(backend, /hasRecentMessage:/, "최근 메시지 수신 여부를 상태 API에 제공해야 합니다.");
 assert.match(frontend, /age>=0&&age<30000/, "미래 시각을 실시간 수신으로 오인하면 안 됩니다.");
 assert.match(frontend, /disconnectMarketSocket\(\)/, "화면 비활성화 시 브라우저 소켓을 닫아야 합니다.");
 
