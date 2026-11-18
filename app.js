@@ -41,9 +41,15 @@ const n=document.createElement("p");n.className="data-note";n.textContent=d.meth
 function applyLiveBook(update){
  if(!currentCompareData||currentCompareData.asset!==update.asset)return;
  const results=[...(currentCompareData.results||[])];
+ const previous=results.find(x=>x.exchange===update.exchange)||{};
+ const fee=Number(previous.takerFeeRate);
+ const feeKnown=previous.takerFeeRate!==null&&previous.takerFeeRate!==undefined&&Number.isFinite(fee)&&fee>=0;
  const item={
+  ...previous,
   exchange:update.exchange,exchangeName:update.exchangeName,available:true,
   bestAsk:update.bestAsk,bestBid:update.bestBid,
+  feeAdjustedAsk:feeKnown?update.bestAsk.price*(1+fee):null,
+  feeEstimateAvailable:feeKnown,
   timestamp:update.timestamp
  };
  const index=results.findIndex(x=>x.exchange===update.exchange);
