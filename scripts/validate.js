@@ -50,6 +50,9 @@ assert.match(backend, /socket\.terminate\(\);\s*return;/, "구독 요청 실패 
 assert.match(backend, /코인원 구독\/스트림 오류:/, "코인원 구독 오류를 감지해야 합니다.");
 assert.match(backend, /item\.error && typeof item\.error === "object"/, "업비트·빗썸 등 거래소의 JSON 오류 응답을 진단해야 합니다.");
 assert.match(backend, /스트림 오류:/, "거래소별 스트림 오류를 상태 API에 기록해야 합니다.");
+assert.match(backend, /state = "error";\s*streamStatus\[exchangeId\]\.lastError[\s\S]*?socket\.terminate\(\);/, "거래소 프로토콜 오류가 나면 연결을 재시작해야 합니다.");
+assert.match(backend, /lastUpdateAt = new Date\(update\.timestamp\)\.toISOString\(\);\s*streamStatus\[exchangeId\]\.state = "connected";\s*streamStatus\[exchangeId\]\.lastError = null;/, "정상 호가 수신 후에만 스트림 오류 상태를 해제해야 합니다.");
+
 assert.match(frontend, /age>=0&&age<30000/, "미래 시각을 실시간 수신으로 오인하면 안 됩니다.");
 assert.match(frontend, /disconnectMarketSocket\(\)/, "화면 비활성화 시 브라우저 소켓을 닫아야 합니다.");
 assert.match(frontend, /BITCOIN.*BTC.*ETHEREUM.*ETH.*SOLANA.*SOL.*RIPPLE.*XRP.*DOGECOIN.*DOGE/, "영문 코인 이름 검색 별칭을 지원해야 합니다.");
