@@ -7,20 +7,13 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 10000;
-const EXCHANGE_IDS = [
-  "binance", "bybit", "okx", "kucoin",
-  "kraken", "coinbase", "bitget", "gateio"
-];
+const EXCHANGE_IDS = ["upbit", "bithumb", "coinone", "korbit"];
 
 const EXCHANGE_INFO = {
-  binance: { name: "Binance", jurisdiction: "Global", countryCode: "GL", note: "Global group; operating entities vary by region" },
-  bybit: { name: "Bybit", jurisdiction: "United Arab Emirates", countryCode: "AE", note: "Regional legal entities and access restrictions apply" },
-  okx: { name: "OKX", jurisdiction: "Seychelles", countryCode: "SC", note: "Regional legal entities and access restrictions apply" },
-  kucoin: { name: "KuCoin", jurisdiction: "Seychelles", countryCode: "SC", note: "Regional legal entities and access restrictions apply" },
-  kraken: { name: "Kraken", jurisdiction: "United States", countryCode: "US", note: "Regional availability varies" },
-  coinbase: { name: "Coinbase", jurisdiction: "United States", countryCode: "US", note: "Regional availability varies" },
-  bitget: { name: "Bitget", jurisdiction: "Seychelles", countryCode: "SC", note: "Regional legal entities and access restrictions apply" },
-  gateio: { name: "Gate.io", jurisdiction: "Cayman Islands", countryCode: "KY", note: "Regional legal entities and access restrictions apply" }
+  upbit: { name: "업비트" },
+  bithumb: { name: "빗썸" },
+  coinone: { name: "코인원" },
+  korbit: { name: "코빗" }
 };
 
 const instances = new Map();
@@ -51,7 +44,7 @@ app.get("/api/exchanges", (_req, res) => {
 
 app.get("/api/compare", async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
-  const quote = String(req.query.quote || "USDT").toUpperCase();
+  const quote = String(req.query.quote || "KRW").toUpperCase();
 
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || !/^[A-Z0-9]{2,15}$/.test(quote)) {
     return res.status(400).json({ error: "Invalid asset or quote symbol." });
@@ -138,8 +131,7 @@ app.get("/api/rankings", async (req, res) => {
       }
       const info = EXCHANGE_INFO[id];
       return {
-        exchange: id, name: info.name, jurisdiction: info.jurisdiction,
-        countryCode: info.countryCode, note: info.note, quote,
+        exchange: id, name: info.name, quote,
         quoteVolume24h: quoteVolume24h || null, marketsCount,
         available: quoteVolume24h > 0, source: "public exchange tickers",
         updatedAt: new Date().toISOString()
@@ -147,8 +139,7 @@ app.get("/api/rankings", async (req, res) => {
     } catch (error) {
       const info = EXCHANGE_INFO[id];
       return {
-        exchange: id, name: info.name, jurisdiction: info.jurisdiction,
-        countryCode: info.countryCode, quote, quoteVolume24h: null,
+        exchange: id, name: info.name, quote, quoteVolume24h: null,
         marketsCount: 0, available: false,
         reason: String(error.message || "Volume data unavailable").slice(0, 160)
       };
@@ -161,8 +152,7 @@ app.get("/api/rankings", async (req, res) => {
 
   res.json({
     quote, updatedAt: new Date().toISOString(),
-    rankingBasis: "Sum of reported 24h spot quoteVolume for markets quoted in selected currency. Exchange-reported volumes are not independently audited.",
-    jurisdictionNote: "Jurisdiction is a reference to a commonly associated legal/operating base, not a statement that the exchange is headquartered there or available to residents of that country. Check each exchange's local entity and restrictions.",
+    rankingBasis: "국내 거래소가 공개한 24시간 원화(KRW) 현물 거래량을 합산한 참고 순위입니다. 거래소별 집계 방식이 다를 수 있으며 외부에서 독립적으로 검증한 수치는 아닙니다.",
     results: ranked, unavailable: results.filter(item => !item.available)
   });
 });
@@ -214,7 +204,7 @@ app.get("/api/dex", async (req, res) => {
 });
 
 app.get("/", (_req, res) => {
-  res.type("text").send("BB Exchange API is running. Try /api/health or /api/compare?asset=BTC&quote=USDT");
+  res.type("text").send("BB Exchange API is running. Try /api/health or /api/compare?asset=BTC&quote=KRW");
 });
 
 app.listen(PORT, "0.0.0.0", () => {
