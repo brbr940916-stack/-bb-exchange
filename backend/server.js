@@ -44,6 +44,10 @@ const EXCHANGE_INFO = {
 const instances = new Map();
 const responseCache = new Map();
 
+function asyncHandler(handler) {
+  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+}
+
 function cacheJson(ttlMs) {
   return (req, res, next) => {
     const key = req.originalUrl;
@@ -117,7 +121,7 @@ app.get("/api/exchanges", (_req, res) => {
   res.json({ exchanges: EXCHANGE_IDS.map(id => ({ id, name: EXCHANGE_INFO[id].name })) });
 });
 
-app.get("/api/compare", cacheJson(5000), async (req, res) => {
+app.get("/api/compare", cacheJson(5000), asyncHandler(async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
@@ -170,9 +174,9 @@ app.get("/api/compare", cacheJson(5000), async (req, res) => {
     results: available,
     unavailable: results.filter(item => !item.available)
   });
-});
+}));
 
-app.get("/api/history", cacheJson(60000), async (req, res) => {
+app.get("/api/history", cacheJson(60000), asyncHandler(async (req, res) => {
   const asset = String(req.query.asset || "BTC").toUpperCase();
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (!/^[A-Z0-9]{2,15}$/.test(asset) || quote !== "KRW") {
@@ -208,9 +212,9 @@ app.get("/api/history", cacheJson(60000), async (req, res) => {
     results: results.filter(item => item.available),
     unavailable: results.filter(item => !item.available)
   });
-});
+}));
 
-app.get("/api/rankings", cacheJson(300000), async (req, res) => {
+app.get("/api/rankings", cacheJson(300000), asyncHandler(async (req, res) => {
   const quote = String(req.query.quote || "KRW").toUpperCase();
   if (quote !== "KRW") {
     return res.status(400).json({ error: "국내 거래소 순위는 KRW 기준만 지원합니다." });
@@ -256,12 +260,30 @@ app.get("/api/rankings", cacheJson(300000), async (req, res) => {
     rankingBasis: "업비트·빗썸·코인원이 공개한 24시간 원화(KRW) 현물 거래량을 합산한 참고 순위입니다. 거래소별 집계 방식이 다를 수 있으며 외부에서 독립적으로 검증한 수치는 아닙니다.",
     results: ranked, unavailable: results.filter(item => !item.available)
   });
-});
+}));
 
 app.get("/", (_req, res) => {
   res.type("text").send("BB 거래소 API가 실행 중입니다. /api/health 또는 /api/compare?asset=BTC&quote=KRW 를 확인하세요.");
 });
 
+
+
+// 등록되지 않은 경로와 예외 상황은 내부 스택/상세 정보를 노출하지 않는 JSON으로 응답합니다.
+app.use((_req, res) => {
+  res.status(404).json({ error: "요청한 API 경로를 찾을 수 없습니다." });
+});
+app.use((error, _req, res, next) => {
+  if (res.headersSent) return next(error);
+  const status = Number.isInteger(error.status) && error.status >= 400 && error.status < 500
+    ? error.status
+    : 500;
+  console.error("API 처리 오류:", String(error.message || "unknown error").slice(0, 180));
+  res.status(status).json({
+    error: status === 400
+      ? "요청 형식이 올바르지 않습니다."
+      : "서버 내부 오류가 발생했습니다."
+  });
+});
 
 const LIVE_ASSETS = ["BTC", "ETH", "SOL", "XRP", "DOGE"];
 const liveBooks = new Map();
