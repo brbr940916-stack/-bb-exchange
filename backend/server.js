@@ -106,7 +106,8 @@ app.get("/api/compare", cacheJson(5000), async (req, res) => {
       const bestAsk = book.asks?.[0];
       const bestBid = book.bids?.[0];
       const market = exchange.markets[symbol];
-      const fee = Number(market.taker);
+      const hasPublicTakerFee = market.taker !== null && market.taker !== undefined && market.taker !== "";
+      const fee = hasPublicTakerFee ? Number(market.taker) : NaN;
       const takerFeeRate = Number.isFinite(fee) && fee >= 0 ? fee : null;
       const feeAdjustedAsk = bestAsk && takerFeeRate !== null ? bestAsk[0] * (1 + takerFeeRate) : null;
       return {
