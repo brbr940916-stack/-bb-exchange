@@ -18,6 +18,9 @@
 - `GET /api/compare?asset=BTC&quote=KRW` — 거래소별 최우선 호가 및 수수료 정보
 - `GET /api/history?asset=BTC&quote=KRW` — 최근 1시간 봉 최대 24개
 - `GET /api/rankings?quote=KRW` — 거래소별 공개 24시간 원화 현물 거래량 참고 순위
+- `GET /ws/market?asset=BTC` — 브라우저용 실시간 호가 스트림 (BTC·ETH·SOL·XRP·DOGE)
+
+실시간 호가는 업비트·빗썸·코인원 공개 WebSocket에서 수신합니다. 브라우저는 선택한 코인의 업데이트를 받아 화면에 반영하며, 연결이 끊기거나 수신이 지연되면 REST 시세 조회로 보완합니다. 서버 상태의 `hasFreshData`는 최근 30초 이내 해당 거래소 호가를 수신했는지 나타냅니다.
 
 ## 로컬 실행
 
