@@ -2,7 +2,7 @@
   "name": "bb-exchange-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Public market data API for BB Exchange",
+  "description": "BB 거래소 국내 원화 현물 시세 비교 API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
