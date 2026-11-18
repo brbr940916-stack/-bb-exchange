@@ -67,6 +67,7 @@ app.get("/api/compare", async (req, res) => {
 
       return {
         exchange: id,
+        exchangeName: EXCHANGE_INFO[id].name,
         symbol,
         available: Boolean(bestAsk),
         bestAsk: bestAsk ? { price: bestAsk[0], amount: bestAsk[1] } : null,
@@ -108,9 +109,9 @@ app.get("/api/compare", async (req, res) => {
 
 
 app.get("/api/rankings", async (req, res) => {
-  const quote = String(req.query.quote || "USDT").toUpperCase();
-  if (!["USDT", "USD", "USDC"].includes(quote)) {
-    return res.status(400).json({ error: "Supported ranking quote currencies: USDT, USD, USDC." });
+  const quote = String(req.query.quote || "KRW").toUpperCase();
+  if (!["KRW"].includes(quote)) {
+    return res.status(400).json({ error: "국내 거래소 순위는 KRW 기준만 지원합니다." });
   }
 
   const results = await Promise.all(EXCHANGE_IDS.map(async (id) => {
