@@ -282,6 +282,8 @@ function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
   };
   liveBooks.set(exchangeId + ":" + asset, update);
   streamStatus[exchangeId].lastUpdateAt = new Date(update.timestamp).toISOString();
+  streamStatus[exchangeId].state = "connected";
+  streamStatus[exchangeId].lastError = null;
   const message = JSON.stringify(update);
   for (const client of browserClients) {
     if (client.readyState === WebSocket.OPEN && client.asset === asset) {
@@ -330,7 +332,6 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
       retryMs = 2000;
       streamStatus[exchangeId].state = "connected";
       streamStatus[exchangeId].connectedAt = new Date().toISOString();
-      streamStatus[exchangeId].lastError = null;
       try {
         subscribe(socket);
       } catch (error) {
@@ -373,12 +374,16 @@ function connectExchangeStream(exchangeId, endpoint, subscribe, handler) {
         for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
           if (item.error && typeof item.error === "object") {
             const detail = item.error.message || item.error.name || "거래소가 요청을 거부했습니다.";
+            streamStatus[exchangeId].state = "error";
             streamStatus[exchangeId].lastError = (EXCHANGE_INFO[exchangeId].name + " 스트림 오류: " + detail).slice(0, 180);
-            continue;
+            socket.terminate();
+            return;
           }
           if (exchangeId === "coinone" && (item.response_type === "ERROR" || item.r === "ERROR")) {
+            streamStatus[exchangeId].state = "error";
             streamStatus[exchangeId].lastError = ("코인원 구독/스트림 오류: " + (item.message || item.error_code || "알 수 없는 오류")).slice(0, 180);
-            continue;
+            socket.terminate();
+            return;
           }
           handler(item);
         }
