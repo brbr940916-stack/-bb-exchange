@@ -1,9 +1,11 @@
 const fs = require("node:fs");
+const path = require("node:path");
+const root = path.resolve(__dirname, "..");
 const assert = require("node:assert/strict");
 
-const html = fs.readFileSync("index.html", "utf8");
-const frontend = fs.readFileSync("app.js", "utf8");
-const backend = fs.readFileSync("backend/server.js", "utf8");
+const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const frontend = fs.readFileSync(path.join(root, "app.js"), "utf8");
+const backend = fs.readFileSync(path.join(root, "backend/server.js"), "utf8");
 
 assert.match(html, /<html lang="ko">/, "페이지는 한국어로 제공되어야 합니다.");
 assert.match(html, /id="asset"/, "자산 선택기가 있어야 합니다.");
