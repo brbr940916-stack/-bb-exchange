@@ -259,7 +259,11 @@ const liveBooks = new Map();
 const browserClients = new Set();
 const streamStatus = Object.fromEntries(EXCHANGE_IDS.map(id => [id, { state: "starting", connectedAt: null, lastMessageAt: null, lastUpdateAt: null, lastError: null, reconnects: 0 }]));
 const wsServer = http.createServer(app);
-const browserWss = new WebSocket.Server({ noServer: true });
+const browserWss = new WebSocket.Server({
+  noServer: true,
+  maxPayload: 1024,
+  perMessageDeflate: false
+});
 
 function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
   const validAsks = (asks || []).map(level => ({
@@ -271,6 +275,13 @@ function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
   })).filter(level => Number.isFinite(level.price) && level.price > 0 && Number.isFinite(level.amount) && level.amount > 0)
     .sort((a, b) => b.price - a.price);
   if (!validAsks.length) return;
+  const now = Date.now();
+  const parsedTimestamp = Number(timestamp);
+  const updateTimestamp = Number.isFinite(parsedTimestamp) && parsedTimestamp > 0
+    ? parsedTimestamp
+    : now;
+  // 오래되었거나 미래 시각으로 잘못 표기된 호가를 실시간 데이터로 노출하지 않습니다.
+  if (updateTimestamp < now - 120000 || updateTimestamp > now + 5000) return;
   const update = {
     type: "orderbook",
     asset,
@@ -278,7 +289,7 @@ function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
     exchangeName: EXCHANGE_INFO[exchangeId].name,
     bestAsk: validAsks[0],
     bestBid: validBids[0] || null,
-    timestamp: Number(timestamp) || Date.now()
+    timestamp: updateTimestamp
   };
   liveBooks.set(exchangeId + ":" + asset, update);
   streamStatus[exchangeId].lastUpdateAt = new Date(update.timestamp).toISOString();
@@ -287,7 +298,17 @@ function sendLiveUpdate(exchangeId, asset, asks, bids, timestamp) {
   const message = JSON.stringify(update);
   for (const client of browserClients) {
     if (client.readyState === WebSocket.OPEN && client.asset === asset) {
-      client.send(message);
+      try {
+        client.send(message, error => {
+          if (error) {
+            browserClients.delete(client);
+            client.terminate();
+          }
+        });
+      } catch (_error) {
+        browserClients.delete(client);
+        client.terminate();
+      }
     }
   }
 }
@@ -460,7 +481,10 @@ wsServer.on("upgrade", (request, socket, head) => {
     browserClients.add(client);
     for (const exchangeId of EXCHANGE_IDS) {
       const snapshot = liveBooks.get(exchangeId + ":" + asset);
-      if (snapshot && client.readyState === WebSocket.OPEN) client.send(JSON.stringify(snapshot));
+      const snapshotAge = snapshot ? Date.now() - snapshot.timestamp : Infinity;
+      if (snapshot && snapshotAge >= 0 && snapshotAge < 30000 && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(snapshot));
+      }
     }
     client.on("close", () => browserClients.delete(client));
     client.on("error", () => browserClients.delete(client));
